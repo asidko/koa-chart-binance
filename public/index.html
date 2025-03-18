@@ -61,8 +61,8 @@
         .price-guide {
             position: absolute;
             pointer-events: none;
-            left: 5px;
-            right: 5px;
+            left: 60px; /* Match the margin.left value */
+            right: 30px; /* Match the margin.right value */
             opacity: 0;
             transition: opacity 0.1s;
             z-index: 10;
@@ -117,8 +117,8 @@
         .price-range-zone {
             position: absolute;
             background-color: rgba(13, 110, 253, 0.15);
-            left: 0;
-            right: 0;
+            left: 60px; /* Match the margin.left value */
+            right: 30px; /* Match the margin.right value */
             pointer-events: none;
             border-top: 1px dashed #0d6efd;
             border-bottom: 1px dashed #0d6efd;
@@ -134,6 +134,18 @@
             font-size: 12px;
             padding: 3px 8px;
             border-radius: 3px;
+            z-index: 3;
+        }
+
+        .price-range-percent {
+            position: absolute;
+            left: 10px;
+            background-color: #0d6efd;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transform: translateY(-50%);
             z-index: 3;
         }
 
@@ -817,6 +829,10 @@
             this.bottomLabel.className = 'price-range-label';
             container.appendChild(this.bottomLabel);
 
+            this.percentLabel = document.createElement('div');
+            this.percentLabel.className = 'price-range-percent';
+            container.appendChild(this.percentLabel);
+
             // Drag state
             this.dragState = {
                 isDragging: false,
@@ -940,10 +956,17 @@
             this.bottomLabel.style.top = `${bottomY}px`;
             this.bottomLabel.textContent = ChartUtils.formatPrice(bottomPrice);
 
+
             // Add percentage info if enough space
             if (height > 30) {
-                this.topLabel.textContent += ` (${percentDiff.toFixed(2)}%)`;
+                const middleY = topY + (height / 2);
+                this.percentLabel.style.display = 'block';
+                this.percentLabel.style.top = `${middleY}px`;
+                this.percentLabel.textContent = `${percentDiff.toFixed(2)}%`;
+            } else {
+                this.percentLabel.style.display = 'none';
             }
+
         }
 
         /**
@@ -953,6 +976,7 @@
             this.rangeZone.style.display = 'none';
             this.topLabel.style.display = 'none';
             this.bottomLabel.style.display = 'none';
+            this.percentLabel.style.display = 'none';
         }
 
         /**
