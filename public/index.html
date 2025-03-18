@@ -141,7 +141,6 @@
         .chart-container {
             width: 100% !important;
             height: auto !important;
-            min-height: 300px;
         }
 
         /* Make sure SVG scales correctly */
@@ -1187,13 +1186,12 @@
                 .attr('class', 'grid y-grid');
 
             // Add labels
-            // FIXED: Adjusted position of date range label
             this.dateRangeLabel = this.svg.append('text')
                 .attr('class', 'date-range-label')
                 .attr('text-anchor', 'middle')
-                .attr('transform', `translate(${width / 2},15)`) // Changed from -10 to 15
+                .attr('transform', `translate(${width / 2},0)`)
                 .style('font-size', '12px')
-                .style('fill', '#666')
+                .style('fill', '#888')
                 .text('Loading date range...');
 
             // Add chart elements
@@ -1752,7 +1750,7 @@
          */
         updateChartTitle(params) {
             const symbolDisplay = params.symbol.replace('USDT', '');
-            const title = `${symbolDisplay} ${params.interval} Chart`;
+            const title = `${symbolDisplay} on ${params.interval}`;
             this.chartTitle.textContent = title;
             return title;
         }
