@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  crypto-chart:
+    build:
+      context: .
+    container_name: crypto-chart
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crypto-chart.rule=Host(`chart.aqa.pp.ua`)"
+      - "traefik.http.services.crypto-chart.loadbalancer.server.port=3000"
+      - "traefik.http.routers.crypto-chart.tls=true"
+      - "traefik.http.routers.crypto-chart.tls.certresolver=myresolver"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true
