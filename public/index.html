@@ -63,98 +63,6 @@
             font-style: italic;
         }
 
-        /* Price guide styles - FIXED: positioned inside chart */
-        .price-guide {
-            position: absolute;
-            pointer-events: none;
-            left: 60px; /* Match the margin.left value */
-            right: 30px; /* Match the margin.right value */
-            opacity: 0;
-            transition: opacity 0.1s;
-            z-index: 10;
-        }
-
-        .price-guide-line {
-            position: absolute;
-            height: 0;
-            width: 100%;
-            border-top: 1px dashed #555;
-        }
-
-        .price-guide-label {
-            position: absolute;
-            left: 10px;
-            transform: translateY(-50%);
-            background-color: #555;
-            color: white;
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 3px;
-        }
-
-        .current-price-label {
-            position: absolute;
-            background-color: #0d6efd;
-            color: white;
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 3px;
-            pointer-events: none;
-            font-weight: bold;
-            text-align: center;
-            left: 10px;
-            z-index: 5;
-        }
-
-        /* Price percentage label */
-        .price-guide-percent {
-            position: absolute;
-            left: 10px;
-            transform: translateY(-50%);
-            background-color: #555;
-            color: white;
-            font-size: 11px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            top: 20px;
-        }
-
-        /* Price range selection */
-        .price-range-zone {
-            position: absolute;
-            background-color: rgba(13, 110, 253, 0.15);
-            left: 60px; /* Match the margin.left value */
-            right: 30px; /* Match the margin.right value */
-            pointer-events: none;
-            border-top: 1px dashed #0d6efd;
-            border-bottom: 1px dashed #0d6efd;
-            z-index: 2;
-        }
-
-        .price-range-label {
-            position: absolute;
-            left: 10px;
-            transform: translateY(-50%);
-            background-color: #0d6efd;
-            color: white;
-            font-size: 12px;
-            padding: 3px 8px;
-            border-radius: 3px;
-            z-index: 3;
-        }
-
-        .price-range-percent {
-            position: absolute;
-            left: 10px;
-            background-color: #0d6efd;
-            color: white;
-            font-size: 11px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            transform: translateY(-50%);
-            z-index: 3;
-        }
-
         /* Responsive containers */
         .chart-container {
             width: 100% !important;
@@ -213,11 +121,6 @@
             .form-check {
                 margin-bottom: 6px;
                 margin-right: 6px;
-            }
-
-            .price-guide-label, .price-range-label, .current-price-label {
-                font-size: 10px;
-                padding: 2px 4px;
             }
 
             .axis text {
@@ -713,280 +616,6 @@
     // VIEW COMPONENTS - UI building blocks
     // ===================================================
     /**
-     * Component for displaying price guide
-     */
-    class PriceGuideComponent {
-        /**
-         * Create a price guide component
-         * @param {HTMLElement} container - Parent container
-         * @param {object} chartInfo - Chart scales and margins
-         */
-        constructor(container, chartInfo) {
-            this.container = container;
-            this.chartInfo = chartInfo;
-
-            // Initialize elements
-            this.priceGuide = document.getElementById('price-guide');
-            this.priceGuideLine = this.priceGuide.querySelector('.price-guide-line');
-            this.priceGuideLabel = this.priceGuide.querySelector('.price-guide-label');
-            this.priceGuidePercent = this.priceGuide.querySelector('.price-guide-percent');
-        }
-
-        /**
-         * Update the chart info reference when scales change
-         * @param {object} chartInfo - New chart scales and margins
-         */
-        updateChartInfo(chartInfo) {
-            this.chartInfo = chartInfo;
-        }
-
-        /**
-         * Update the price guide position and content
-         * @param {number} y - Y position in pixels
-         * @param {PriceDataPoint[]} currentData - Current chart data
-         * @returns {Object} State of price guide
-         */
-        update(y, currentData) {
-            const hoveredPrice = this._calculatePriceAtPosition(y);
-
-            // Update DOM
-            this.priceGuide.style.top = `${y}px`;
-            this.priceGuide.style.opacity = '1';
-            this.priceGuideLabel.textContent = ChartUtils.formatPrice(hoveredPrice);
-
-            // Update percentage difference
-            const lastPrice = currentData.length > 0 ? currentData[currentData.length - 1].price : null;
-            if (lastPrice !== null) {
-                const percentDiff = ChartUtils.calculatePercentDifference(hoveredPrice, lastPrice);
-                const formattedPercent = ChartUtils.formatPercent(percentDiff);
-                const color = percentDiff >= 0 ? '#4caf50' : '#ff5252';
-
-                this.priceGuidePercent.textContent = formattedPercent;
-                this.priceGuidePercent.style.backgroundColor = color;
-            } else {
-                this.priceGuidePercent.textContent = '';
-            }
-
-            return {
-                y,
-                hoveredPrice,
-                lastPrice,
-                visible: true
-            };
-        }
-
-        /**
-         * Hide the price guide
-         * @returns {Object} State of price guide
-         */
-        hide() {
-            this.priceGuide.style.opacity = '0';
-            this.priceGuidePercent.textContent = '';
-
-            return {
-                visible: false
-            };
-        }
-
-        /**
-         * Calculate price at position
-         * @param {number} y - Y position in pixels
-         * @returns {number} Price at position
-         * @private
-         */
-        _calculatePriceAtPosition(y) {
-            const mouseYInScaleSpace = y - this.chartInfo.margin.top;
-            return this.chartInfo.y.invert(mouseYInScaleSpace);
-        }
-    }
-
-    /**
-     * Component for price range selection
-     */
-    class PriceRangeComponent {
-        /**
-         * Create a price range selection component
-         * @param {HTMLElement} container - Parent container
-         * @param {object} chartInfo - Chart scales and margins
-         */
-        constructor(container, chartInfo) {
-            this.container = container;
-            this.chartInfo = chartInfo;
-
-            // Create elements
-            this.rangeZone = document.createElement('div');
-            this.rangeZone.className = 'price-range-zone';
-            this.rangeZone.style.display = 'none';
-            container.appendChild(this.rangeZone);
-
-            this.topLabel = document.createElement('div');
-            this.topLabel.className = 'price-range-label';
-            container.appendChild(this.topLabel);
-
-            this.bottomLabel = document.createElement('div');
-            this.bottomLabel.className = 'price-range-label';
-            container.appendChild(this.bottomLabel);
-
-            this.percentLabel = document.createElement('div');
-            this.percentLabel.className = 'price-range-percent';
-            container.appendChild(this.percentLabel);
-
-            // Drag state
-            this.dragState = {
-                isDragging: false,
-                startY: 0,
-                endY: 0
-            };
-        }
-
-        /**
-         * Update the chart info reference when scales change
-         * @param {object} chartInfo - New chart scales and margins
-         */
-        updateChartInfo(chartInfo) {
-            this.chartInfo = chartInfo;
-        }
-
-        /**
-         * Start dragging operation
-         * @param {number} y - Starting Y position
-         * @returns {Object} Drag state
-         */
-        startDrag(y) {
-            this.dragState = {
-                isDragging: true,
-                startY: y,
-                endY: y
-            };
-
-            return {...this.dragState};
-        }
-
-        /**
-         * Update dragging position
-         * @param {number} y - Current Y position
-         * @returns {PriceRange|null} Price range info or null if not dragging
-         */
-        updateDrag(y) {
-            if (!this.dragState.isDragging) return null;
-
-            this.dragState.endY = y;
-            const priceRange = this._calculatePriceRange();
-            this._updateDisplay(priceRange);
-
-            return priceRange;
-        }
-
-        /**
-         * End dragging operation
-         * @returns {Object} Results of the drag operation
-         */
-        endDrag() {
-            if (!this.dragState.isDragging) {
-                return {isSignificantDrag: false, dragState: {...this.dragState}};
-            }
-
-            const isSignificantDrag = Math.abs(this.dragState.endY - this.dragState.startY) >= 5;
-
-            if (!isSignificantDrag) {
-                this.clear();
-            }
-
-            const result = {
-                isSignificantDrag,
-                dragState: {...this.dragState}
-            };
-
-            this.dragState.isDragging = false;
-
-            return result;
-        }
-
-        /**
-         * Calculate price range based on current drag state
-         * @returns {PriceRange} Price range info
-         * @private
-         */
-        _calculatePriceRange() {
-            const topY = Math.min(this.dragState.startY, this.dragState.endY);
-            const bottomY = Math.max(this.dragState.startY, this.dragState.endY);
-            const height = bottomY - topY;
-
-            // Calculate prices from Y positions
-            const topYInScale = topY - this.chartInfo.margin.top;
-            const bottomYInScale = bottomY - this.chartInfo.margin.top;
-            const topPrice = this.chartInfo.y.invert(topYInScale);
-            const bottomPrice = this.chartInfo.y.invert(bottomYInScale);
-
-            // Calculate percentage difference
-            const priceDiff = Math.abs(topPrice - bottomPrice);
-            const percentDiff = (priceDiff / bottomPrice) * 100;
-
-            return {
-                topY,
-                bottomY,
-                topPrice,
-                bottomPrice,
-                height,
-                percentDiff
-            };
-        }
-
-        /**
-         * Update the display based on price range
-         * @param {PriceRange} priceRange - Price range info
-         * @private
-         */
-        _updateDisplay(priceRange) {
-            const {topY, bottomY, topPrice, bottomPrice, height, percentDiff} = priceRange;
-
-            // Update zone
-            this.rangeZone.style.display = 'block';
-            this.rangeZone.style.top = `${topY}px`;
-            this.rangeZone.style.height = `${height}px`;
-
-            // Update labels
-            this.topLabel.style.display = 'block';
-            this.topLabel.style.top = `${topY}px`;
-            this.topLabel.textContent = ChartUtils.formatPrice(topPrice);
-
-            this.bottomLabel.style.display = 'block';
-            this.bottomLabel.style.top = `${bottomY}px`;
-            this.bottomLabel.textContent = ChartUtils.formatPrice(bottomPrice);
-
-
-            // Add percentage info if enough space
-            if (height > 30) {
-                const middleY = topY + (height / 2);
-                this.percentLabel.style.display = 'block';
-                this.percentLabel.style.top = `${middleY}px`;
-                this.percentLabel.textContent = `${percentDiff.toFixed(2)}%`;
-            } else {
-                this.percentLabel.style.display = 'none';
-            }
-
-        }
-
-        /**
-         * Clear the selection
-         */
-        clear() {
-            this.rangeZone.style.display = 'none';
-            this.topLabel.style.display = 'none';
-            this.bottomLabel.style.display = 'none';
-            this.percentLabel.style.display = 'none';
-        }
-
-        /**
-         * Check if component is in dragging state
-         * @returns {boolean} True if dragging
-         */
-        isDraggingActive() {
-            return this.dragState.isDragging;
-        }
-    }
-
-    /**
      * Component for chart controls
      */
     class ControlsComponent {
@@ -1219,9 +848,6 @@
             // Add chart elements
             this.path = this.chartGroup.append('path').attr('class', 'line');
             this.areaPath = this.chartGroup.append('path').attr('class', 'area');
-
-            // We no longer create current price indicators here
-            // They will be managed by the CurrentPricePlugin
         }
 
         /**
@@ -1266,9 +892,6 @@
                 if (this.lastExtremaPoints && this.lastExtremaPoints.length > 0) {
                     this.renderExtremaPoints(this.lastExtremaPoints);
                 }
-
-                // We no longer update the current price indicator here
-                // It's managed by the CurrentPricePlugin
             }
         }
 
@@ -1514,11 +1137,9 @@
             /** @type {HTMLElement} Loading indicator */
             this.loadingEl = document.getElementById('loading');
 
-            // Current price label is now managed by the CurrentPricePlugin
-
             // Chart configuration
             /** @type {{top: number, right: number, bottom: number, left: number}} */
-            this.margin = {top: 20, right: 30, bottom: 40, left: 60}; // FIXED: Smaller margins
+            this.margin = {top: 20, right: 30, bottom: 40, left: 60}; 
 
             // Calculate initial dimensions based on container
             this._calculateDimensions();
@@ -1530,13 +1151,8 @@
                 margin: this.margin
             });
 
-            // Get scales from renderer
-            const scales = this.renderer.getScales();
-
             // Initialize controls component
             this.controls = new ControlsComponent();
-            
-            // Price guide and price range are now managed by plugins
 
             // Store current data
             /** @type {PriceDataPoint[]} */
@@ -1624,8 +1240,6 @@
                 onRefresh: callbacks.onRefresh
             });
 
-            // Note: Mouse event handlers have been moved to the respective plugins
-
             // Handle back/forward navigation
             window.addEventListener('popstate', () => {
                 if (callbacks.onPopState) {
@@ -1633,10 +1247,6 @@
                 }
             });
         }
-
-        // Note: Mouse event handlers have been moved to the respective plugins
-
-        // Note: Chart area detection is now handled by the plugins
 
         /**
          * Update chart title based on parameters
