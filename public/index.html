@@ -1183,7 +1183,7 @@
 
             // Chart configuration
             /** @type {{top: number, right: number, bottom: number, left: number}} */
-            this.margin = {top: 20, right: 30, bottom: 40, left: 60}; 
+            this.margin = {top: 20, right: 60, bottom: 40, left: 60}; 
 
             // Calculate initial dimensions based on container
             this._calculateDimensions();
@@ -1246,8 +1246,10 @@
             // On very small screens, adjust left margin for axis labels
             if (containerWidth < 400) {
                 this.margin.left = 45; // Smaller margin
+                this.margin.right = 45; // Smaller margin
             } else {
                 this.margin.left = 60; // Default margin
+                this.margin.right = 60; // Default margin
             }
         }
 
