@@ -70,7 +70,8 @@ class PriceRangePlugin extends ChartPlugin {
     this.topLabel = document.createElement('div');
     this.topLabel.className = 'price-range-label';
     this.topLabel.style.position = 'absolute';
-    this.topLabel.style.left = '10px';
+    this.topLabel.style.left = 'auto';
+    this.topLabel.style.right = '10px';
     this.topLabel.style.transform = 'translateY(-50%)';
     this.topLabel.style.backgroundColor = this.options.labelBgColor;
     this.topLabel.style.color = this.options.labelTextColor;
@@ -85,7 +86,8 @@ class PriceRangePlugin extends ChartPlugin {
     this.bottomLabel = document.createElement('div');
     this.bottomLabel.className = 'price-range-label';
     this.bottomLabel.style.position = 'absolute';
-    this.bottomLabel.style.left = '10px';
+    this.bottomLabel.style.left = 'auto';
+    this.bottomLabel.style.right = '10px';
     this.bottomLabel.style.transform = 'translateY(-50%)';
     this.bottomLabel.style.backgroundColor = this.options.labelBgColor;
     this.bottomLabel.style.color = this.options.labelTextColor;
@@ -100,7 +102,8 @@ class PriceRangePlugin extends ChartPlugin {
     this.percentLabel = document.createElement('div');
     this.percentLabel.className = 'price-range-percent';
     this.percentLabel.style.position = 'absolute';
-    this.percentLabel.style.left = '10px';
+    this.percentLabel.style.left = 'auto';
+    this.percentLabel.style.right = '10px';
     this.percentLabel.style.transform = 'translateY(-50%)';
     this.percentLabel.style.backgroundColor = this.options.percentLabelBgColor;
     this.percentLabel.style.color = this.options.labelTextColor;

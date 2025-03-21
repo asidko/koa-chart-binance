@@ -100,7 +100,9 @@ class CurrentPricePlugin extends ChartPlugin {
     // Update label
     const formattedPrice = this._formatPrice(lastPoint.price);
     this.labelElement.textContent = formattedPrice;
-    this.labelElement.style.left = `${margin.left + 10}px`;
+    // Position label on the right side of the chart
+    this.labelElement.style.left = 'auto';
+    this.labelElement.style.right = `${margin.right + 10}px`;
     this.labelElement.style.top = `${margin.top + lastY}px`;
     this.labelElement.style.display = 'block';
     

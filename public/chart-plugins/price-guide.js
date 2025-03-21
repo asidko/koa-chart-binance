@@ -78,7 +78,8 @@ class PriceGuidePlugin extends ChartPlugin {
     this.guideLabel = document.createElement('div');
     this.guideLabel.className = 'price-guide-label';
     this.guideLabel.style.position = 'absolute';
-    this.guideLabel.style.left = '10px';
+    this.guideLabel.style.left = 'auto';
+    this.guideLabel.style.right = '10px';
     this.guideLabel.style.transform = 'translateY(-50%)';
     this.guideLabel.style.backgroundColor = this.options.labelBgColor;
     this.guideLabel.style.color = this.options.labelTextColor;
@@ -92,7 +93,8 @@ class PriceGuidePlugin extends ChartPlugin {
       this.percentLabel = document.createElement('div');
       this.percentLabel.className = 'price-guide-percent';
       this.percentLabel.style.position = 'absolute';
-      this.percentLabel.style.left = '10px';
+      this.percentLabel.style.left = 'auto';
+      this.percentLabel.style.right = '10px';
       this.percentLabel.style.transform = 'translateY(-50%)';
       this.percentLabel.style.backgroundColor = this.options.labelBgColor;
       this.percentLabel.style.color = this.options.labelTextColor;
