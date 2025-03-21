@@ -1742,6 +1742,8 @@
             this.chartContainer = document.getElementById(chartContainer);
             this.contextMenu = document.getElementById('chart-context-menu');
             this.controller = controller;
+            this.longPressTimer = null;
+            this.longPressDelay = 700; // 700ms delay for long press detection
             
             // Initialize
             this.setupEventListeners();
@@ -1766,6 +1768,42 @@
                     this.controller.handleRefresh();
                 });
             });
+            
+            // Add touch events support
+            this.chartContainer.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
+            this.chartContainer.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: true });
+            this.chartContainer.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
+        }
+        
+        handleTouchStart(event) {
+            if (event.touches.length === 1) {
+                // Start timer for long press
+                this.longPressTimer = setTimeout(() => {
+                    const touch = event.touches[0];
+                    // Convert touch to event-like object with clientX/Y
+                    this.showContextMenu({
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        preventDefault: () => {}
+                    });
+                }, this.longPressDelay);
+            }
+        }
+        
+        handleTouchMove() {
+            // Cancel long press on movement
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+        }
+        
+        handleTouchEnd() {
+            // Cancel long press on touch end
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
         }
         
         showContextMenu(event) {

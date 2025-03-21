@@ -13,6 +13,18 @@ class ChartPlugin {
   constructor(options = {}) {
     this.name = this.constructor.name;
     this.options = options;
+    this.hasTouchSupport = this._detectTouchSupport();
+  }
+  
+  /**
+   * Detect if device has touch support
+   * @returns {boolean} True if touch is supported
+   * @private
+   */
+  _detectTouchSupport() {
+    return ('ontouchstart' in window) || 
+           (navigator.maxTouchPoints > 0) || 
+           (navigator.msMaxTouchPoints > 0);
   }
   
   /**

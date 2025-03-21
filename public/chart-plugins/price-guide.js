@@ -111,8 +111,73 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _setupEventListeners() {
+    // Mouse events
     this.container.addEventListener('mousemove', this._handleMouseMove.bind(this));
     this.container.addEventListener('mouseleave', this._handleMouseLeave.bind(this));
+    
+    // Touch events
+    if (this.hasTouchSupport) {
+      this.container.addEventListener('touchstart', this._handleTouchStart.bind(this), { passive: true });
+      this.container.addEventListener('touchmove', this._handleTouchMove.bind(this), { passive: false });
+      this.container.addEventListener('touchend', this._handleTouchEnd.bind(this), { passive: true });
+    }
+  }
+  
+  /**
+   * Handle touch start
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleTouchStart(event) {
+    // Show the guide on touch
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      this._processTouchPosition(touch);
+    }
+  }
+  
+  /**
+   * Handle touch move
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleTouchMove(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      this._processTouchPosition(touch);
+      
+      // Prevent scrolling while showing price guide
+      if (this.visible) {
+        event.preventDefault();
+      }
+    }
+  }
+  
+  /**
+   * Handle touch end
+   * @private
+   */
+  _handleTouchEnd() {
+    // Keep the guide visible for a moment before hiding
+    setTimeout(() => {
+      this._hide();
+    }, 1500); // Hide after 1.5 seconds
+  }
+  
+  /**
+   * Process touch position
+   * @param {Touch} touch - Touch point
+   * @private
+   */
+  _processTouchPosition(touch) {
+    const chartRect = this.container.getBoundingClientRect();
+    const relativeY = touch.clientY - chartRect.top;
+    
+    if (this._isInChartArea(relativeY)) {
+      this.position.y = relativeY;
+      this._updateGuide();
+      this._show();
+    }
   }
   
   /**
