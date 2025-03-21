@@ -128,3 +128,77 @@ class ApiService {
         return await response.json();
     }
 }
+
+// Add ChartUtils object to the existing utils.js file
+/**
+ * Chart-specific utility functions
+ */
+const ChartUtils = {
+    /**
+     * Format price for display based on magnitude
+     * @param {number} price - The price to format
+     * @param {number} [customDecimals] - Optional custom decimal places
+     * @returns {string} Formatted price
+     */
+    formatPrice(price, customDecimals) {
+        const magnitude = price > 0 ? Math.pow(10, Math.floor(Math.log10(price))) : 1;
+
+        let decimals = customDecimals;
+        if (decimals === undefined) {
+            decimals = 2;
+            if (magnitude < 1) decimals = 4;
+            else if (magnitude < 10) decimals = 3;
+            else if (magnitude < 100) decimals = 2;
+            else decimals = 0;
+        }
+
+        return `${price.toFixed(decimals)}`;
+    },
+
+    /**
+     * Calculate the ideal threshold slider range based on price
+     * @param {number} lastPrice - The latest price value
+     * @returns {ThresholdRange} Range settings for threshold slider
+     */
+    calculateThresholdRange(lastPrice) {
+        const magnitude = lastPrice > 0 ? Math.pow(10, Math.ceil(Math.log10(lastPrice))) : 10;
+        return {
+            min: 0,
+            max: magnitude * 0.10,
+            step: magnitude * 0.0001
+        };
+    },
+
+    /**
+     * Format date for display
+     * @param {Date} date - Date to format
+     * @returns {string} Formatted date string
+     */
+    formatDate(date) {
+        return d3.timeFormat("%d %b %H:%M")(date);
+    },
+
+    /**
+     * Calculate percentage difference between two prices
+     * @param {number} price1 - First price
+     * @param {number} price2 - Second price
+     * @returns {number} Percentage difference
+     */
+    calculatePercentDifference(price1, price2) {
+        if (price2 === 0) return 0;
+        return ((price1 - price2) / price2) * 100;
+    },
+
+    /**
+     * Format percentage with +/- sign
+     * @param {number} percent - Percentage value
+     * @param {number} [decimals=2] - Number of decimal places
+     * @returns {string} Formatted percentage
+     */
+    formatPercent(percent, decimals = 2) {
+        return `${percent >= 0 ? '+' : ''}${percent.toFixed(decimals)}%`;
+    }
+};
+
+// Make available globally
+window.ChartUtils = ChartUtils;

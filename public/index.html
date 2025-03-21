@@ -116,21 +116,24 @@
             text-align: right;
         }
 
-        /* Very small screens */
+        /* Responsive design for small screens */
         @media (max-width: 480px) {
+            /* Form controls */
             .form-check {
                 margin-bottom: 6px;
                 margin-right: 6px;
             }
-
+            
+            /* Chart axes */
             .axis text {
                 font-size: 9px;
             }
-
+            
             .axis path, .axis line {
                 stroke-width: 0.5px;
             }
-
+            
+            /* Controls */
             .control-label {
                 min-width: 50px;
                 font-size: 12px;
@@ -143,7 +146,7 @@
     <h1 id="chart-title" class="text-center mb-3">BTC/USDT 1h Price Chart</h1>
     <div id="loading" class="loading">Loading data...</div>
 
-    <!-- FIXED: Compact controls layout -->
+    <!-- Compact controls layout -->
     <div class="card shadow-sm mb-3">
         <div class="card-body py-2">
             <div class="control-row">
@@ -223,7 +226,7 @@
         </div>
     </div>
 
-    <!-- FIXED: Sliders moved to bottom of chart with label and slider on same line -->
+    <!-- Sliders moved to bottom of chart with label and slider on same line -->
     <div class="card shadow-sm mb-3">
         <div class="card-body py-2">
             <div class="control-row">
@@ -266,6 +269,9 @@
      * - Controller: Orchestration
      */
 
+    // ===================================================
+    // TYPES - TypeScript-style type definitions
+    // ===================================================
     /**
      * @typedef {Object} PriceDataPoint
      * @property {string} timestamp - ISO timestamp string
@@ -322,9 +328,9 @@
      * @property {number} margin.left - Left margin
      */
 
-        // ===================================================
-        // UTILITIES - Pure utility functions
-        // ===================================================
+    // ===================================================
+    // UTILITIES - Pure utility functions
+    // ===================================================
     const ChartUtils = {
             /**
              * Format price for display based on magnitude
@@ -396,16 +402,17 @@
     // DOMAIN - Business logic and data processing
     // ===================================================
     /**
-     * Handles data processing and analysis
+     * Data processing utility functions
+     * @namespace DataProcessorUtils
      */
-    class DataProcessor {
+    const DataProcessorUtils = {
         /**
          * Apply precision filtering to data based on threshold
          * @param {PriceDataPoint[]} data - Array of price data points
          * @param {number} thresholdUSDT - Price change threshold
          * @returns {PriceDataPoint[]} Filtered data points
          */
-        static applyPrecisionFilter(data, thresholdUSDT) {
+        applyPrecisionFilter(data, thresholdUSDT) {
             if (thresholdUSDT <= 0 || data.length <= 1) return [...data]; // Return a copy
 
             const filteredData = [data[0]];
@@ -422,14 +429,14 @@
             }
 
             return filteredData;
-        }
+        },
 
         /**
          * Find local extrema points (tops and bottoms)
          * @param {PriceDataPoint[]} data - Array of price data points
          * @returns {ExtremaPoint[]} Array of local extrema points
          */
-        static findLocalExtrema(data) {
+        findLocalExtrema(data) {
             if (data.length < 3) return [];
 
             /** @type {ExtremaPoint[]} */
@@ -456,8 +463,8 @@
                 extrema.push({timestamp: firstPoint.timestamp, price: firstPoint.price, type});
             }
 
-            return DataProcessor.filterExtrema(extrema, data);
-        }
+            return this.filterExtrema(extrema, data);
+        },
 
         /**
          * Filter extrema points to avoid overcrowding
@@ -466,7 +473,7 @@
          * @returns {ExtremaPoint[]} Filtered extrema points
          * @private
          */
-        static filterExtrema(extrema, data) {
+        filterExtrema(extrema, data) {
             if (extrema.length <= 5) return [...extrema]; // Return a copy
 
             // Calculate price range for significance normalization
@@ -495,8 +502,7 @@
                 .sort((a, b) => b.significance - a.significance)
                 .slice(0, Math.min(8, extremaWithSignificance.length));
         }
-    }
-
+    };
 
     // ===================================================
     // MODEL - Data management
@@ -571,7 +577,7 @@
          * @returns {PriceDataPoint[]} Filtered data points
          */
         filterData(data, threshold) {
-            return DataProcessor.applyPrecisionFilter(data, threshold);
+            return DataProcessorUtils.applyPrecisionFilter(data, threshold);
         }
 
         /**
@@ -580,7 +586,7 @@
          */
         processData() {
             const filteredData = this.filterData(this.rawData, this.params.threshold);
-            const extremaPoints = DataProcessor.findLocalExtrema(filteredData);
+            const extremaPoints = DataProcessorUtils.findLocalExtrema(filteredData);
 
             return {filteredData, extremaPoints};
         }
@@ -1400,8 +1406,8 @@
         setupEventListeners() {
             this.view.setupEventListeners({
                 onSymbolChange: this.handleSymbolChange.bind(this),
-                onIntervalChange: this.handleIntervalChange.bind(this),
-                onLimitChange: this.handleLimitChange.bind(this),
+                onIntervalChange: (interval) => this.handleParamChange('interval', interval),
+                onLimitChange: (limit) => this.handleParamChange('limit', parseInt(limit, 10)),
                 onThresholdChange: this.handleThresholdChange.bind(this),
                 onThresholdSet: this.handleThresholdSet.bind(this),
                 onRefresh: this.handleRefresh.bind(this),
@@ -1410,7 +1416,7 @@
         }
 
         /**
-         * Handle symbol change
+         * Handle symbol change (special case because we reset threshold)
          * @param {string} symbol - New symbol value
          */
         handleSymbolChange(symbol) {
@@ -1431,22 +1437,21 @@
         }
 
         /**
-         * Handle interval change
-         * @param {string} interval - New interval value
+         * Generic handler for parameter changes
+         * @param {string} paramName - Name of parameter to change
+         * @param {any} value - New value
          */
-        handleIntervalChange(interval) {
-            const updatedParams = this.model.setParams({interval});
+        handleParamChange(paramName, value) {
+            // Create update object with parameter name as key
+            const update = { [paramName]: value };
+            
+            // Update model
+            const updatedParams = this.model.setParams(update);
+            
+            // Update URL
             URLHandler.updateUrl(updatedParams, this.model.getThresholdRange());
-            this.updateChart(true);
-        }
-
-        /**
-         * Handle limit change
-         * @param {number} limit - New limit value
-         */
-        handleLimitChange(limit) {
-            const updatedParams = this.model.setParams({limit});
-            URLHandler.updateUrl(updatedParams, this.model.getThresholdRange());
+            
+            // Refresh chart
             this.updateChart(true);
         }
 
@@ -1566,20 +1571,93 @@
         }
     }
 
-    // Add plugin support to the chart renderer
-    class ChartRendererWithPlugins extends ChartRenderer {
+    // Use composition instead of inheritance for plugin support
+    class ChartRendererWithPlugins {
+        /**
+         * Create a chart renderer with plugin support
+         * @param {HTMLElement} container - Chart container
+         * @param {Dimensions} dimensions - Chart dimensions
+         */
         constructor(container, dimensions) {
-            super(container, dimensions);
+            // Create the base renderer
+            this.renderer = new ChartRenderer(container, dimensions);
+            
+            // Plugin manager
             this.pluginManager = null;
+            
+            // Forward properties from the base renderer
+            this.container = this.renderer.container;
+            this.dimensions = this.renderer.dimensions;
+            this.svg = this.renderer.svg;
+            this.chartGroup = this.renderer.chartGroup;
+            this.x = this.renderer.x;
+            this.y = this.renderer.y;
+            this.lastData = this.renderer.lastData;
+            this.lastExtremaPoints = this.renderer.lastExtremaPoints;
         }
         
-        // Override resize to notify plugins
-        resize(dimensions) {
-            super.resize(dimensions);
+        /**
+         * Proxy method calls to the base renderer with plugin support
+         * @param {string} methodName - Method to call
+         * @param {...any} args - Arguments to pass
+         * @returns {any} Result from the method
+         * @private
+         */
+        _proxyMethod(methodName, ...args) {
+            if (typeof this.renderer[methodName] !== 'function') {
+                throw new Error(`Method ${methodName} not found on ChartRenderer`);
+            }
             
+            return this.renderer[methodName](...args);
+        }
+        
+        /**
+         * Resize the chart with plugin support
+         * @param {Dimensions} dimensions - New dimensions
+         */
+        resize(dimensions) {
+            this._proxyMethod('resize', dimensions);
+            
+            // Update local reference
+            this.dimensions = this.renderer.dimensions;
+            
+            // Notify plugins
             if (this.pluginManager) {
                 this.pluginManager.onResize();
             }
+        }
+        
+        // Proxy all other methods to the base renderer
+        getScales() {
+            return this._proxyMethod('getScales');
+        }
+        
+        updateScales(data) {
+            const result = this._proxyMethod('updateScales', data);
+            this.lastData = this.renderer.lastData;
+            return result;
+        }
+        
+        updateAxes() {
+            return this._proxyMethod('updateAxes');
+        }
+        
+        clearLabels() {
+            return this._proxyMethod('clearLabels');
+        }
+        
+        updateChartLines(data) {
+            return this._proxyMethod('updateChartLines', data);
+        }
+        
+        getPointCoordinates(dataPoint) {
+            return this._proxyMethod('getPointCoordinates', dataPoint);
+        }
+        
+        renderExtremaPoints(extremaPoints) {
+            const result = this._proxyMethod('renderExtremaPoints', extremaPoints);
+            this.lastExtremaPoints = this.renderer.lastExtremaPoints;
+            return result;
         }
     }
     
