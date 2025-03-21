@@ -315,15 +315,7 @@
     <div class="card shadow-sm mb-3">
         <div class="card-body p-0">
             <div id="chart-container" class="chart-container">
-                <!-- Price guide element (absolute positioned) -->
-                <div id="price-guide" class="price-guide">
-                    <div class="price-guide-line"></div>
-                    <div class="price-guide-label"></div>
-                    <div class="price-guide-percent"></div>
-                </div>
-                <!-- Current price label (matches hover guide style) -->
-                <div id="current-price-label" class="current-price-label"></div>
-                <!-- Price range selection elements will be added here in JS -->
+                <!-- Chart plugins will add their UI elements here dynamically -->
             </div>
         </div>
     </div>
@@ -1613,18 +1605,8 @@
                 height: this.height,
                 margin: this.margin
             });
-
-            // Update UI components with new scale info
-            const scales = this.renderer.getScales();
-            this.priceGuide.updateChartInfo(scales);
-            this.priceRange.updateChartInfo(scales);
-
-            // Reposition current price label if it exists
-            if (this.currentData.length > 0) {
-                const lastPoint = this.currentData[this.currentData.length - 1];
-                const currentPriceInfo = this.renderer.updateCurrentPriceIndicator(lastPoint);
-                this.currentPriceLabel.style.top = `${currentPriceInfo.y + this.margin.top - 10}px`;
-            }
+            
+            // Plugins are notified of resize in the ChartRendererWithPlugins resize method
         }
 
         /**
@@ -1654,16 +1636,7 @@
 
         // Note: Mouse event handlers have been moved to the respective plugins
 
-        /**
-         * Check if position is in chart area
-         * @param {number} y - Y coordinate
-         * @returns {boolean} True if in chart area
-         * @private
-         */
-        _isInChartArea(y) {
-            const chartRect = this.container.getBoundingClientRect();
-            return y >= this.margin.top && y <= (chartRect.height - this.margin.bottom);
-        }
+        // Note: Chart area detection is now handled by the plugins
 
         /**
          * Update chart title based on parameters
