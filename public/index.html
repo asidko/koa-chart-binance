@@ -8,6 +8,12 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart Plugins -->
+    <script src="chart-plugins/base.js"></script>
+    <script src="chart-plugins/plugin-manager.js"></script>
+    <script src="chart-plugins/current-price.js"></script>
+    <script src="chart-plugins/price-range.js"></script>
+    <script src="chart-plugins/price-guide.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -1222,17 +1228,8 @@
             this.path = this.chartGroup.append('path').attr('class', 'line');
             this.areaPath = this.chartGroup.append('path').attr('class', 'area');
 
-            // Add current price indicators
-            this.currentPriceLine = this.chartGroup.append('line')
-                .attr('stroke', '#3498db')
-                .attr('stroke-width', 1)
-                .attr('stroke-dasharray', '5,3');
-
-            this.currentPriceBullet = this.chartGroup.append('circle')
-                .attr('r', 6)
-                .attr('fill', '#3498db')
-                .attr('stroke', 'white')
-                .attr('stroke-width', 1);
+            // We no longer create current price indicators here
+            // They will be managed by the CurrentPricePlugin
         }
 
         /**
@@ -1278,10 +1275,8 @@
                     this.renderExtremaPoints(this.lastExtremaPoints);
                 }
 
-                // Update current price indicator
-                if (this.lastData.length > 0) {
-                    this.updateCurrentPriceIndicator(this.lastData[this.lastData.length - 1]);
-                }
+                // We no longer update the current price indicator here
+                // It's managed by the CurrentPricePlugin
             }
         }
 
@@ -1407,31 +1402,14 @@
         }
 
         /**
-         * Update current price indicator
-         * @param {PriceDataPoint} lastPoint - Last price data point
+         * Get the coordinates for a data point
+         * @param {PriceDataPoint} dataPoint - The data point
          * @returns {{x: number, y: number, price: number}} Position information
          */
-        updateCurrentPriceIndicator(lastPoint) {
-            const lastX = this.x(new Date(lastPoint.timestamp));
-            const lastY = this.y(lastPoint.price);
-
-            // Update horizontal line at current price
-            this.currentPriceLine
-                .attr('x1', 0)
-                .attr('x2', this.dimensions.width)
-                .attr('y1', lastY)
-                .attr('y2', lastY);
-
-            // Update bullet point
-            this.currentPriceBullet
-                .attr('cx', lastX)
-                .attr('cy', lastY);
-
-            // Ensure price indicators are drawn on top
-            this.svg.node().appendChild(this.currentPriceLine.node());
-            this.svg.node().appendChild(this.currentPriceBullet.node());
-
-            return {x: lastX, y: lastY, price: lastPoint.price};
+        getPointCoordinates(dataPoint) {
+            const x = this.x(new Date(dataPoint.timestamp));
+            const y = this.y(dataPoint.price);
+            return {x, y, price: dataPoint.price};
         }
 
         /**
@@ -1544,8 +1522,7 @@
             /** @type {HTMLElement} Loading indicator */
             this.loadingEl = document.getElementById('loading');
 
-            /** @type {HTMLElement} Current price label */
-            this.currentPriceLabel = document.getElementById('current-price-label');
+            // Current price label is now managed by the CurrentPricePlugin
 
             // Chart configuration
             /** @type {{top: number, right: number, bottom: number, left: number}} */
@@ -1554,8 +1531,8 @@
             // Calculate initial dimensions based on container
             this._calculateDimensions();
 
-            // Initialize chart renderer
-            this.renderer = new ChartRenderer(this.container, {
+            // Initialize chart renderer with plugin support
+            this.renderer = new ChartRendererWithPlugins(this.container, {
                 width: this.width,
                 height: this.height,
                 margin: this.margin
@@ -1564,10 +1541,10 @@
             // Get scales from renderer
             const scales = this.renderer.getScales();
 
-            // Initialize UI components
-            this.priceGuide = new PriceGuideComponent(this.container, scales);
-            this.priceRange = new PriceRangeComponent(this.container, scales);
+            // Initialize controls component
             this.controls = new ControlsComponent();
+            
+            // Price guide and price range are now managed by plugins
 
             // Store current data
             /** @type {PriceDataPoint[]} */
@@ -1665,17 +1642,7 @@
                 onRefresh: callbacks.onRefresh
             });
 
-            // Mouse tracking for price guide
-            this.container.addEventListener('mousemove', this.handleMouseMove.bind(this));
-            this.container.addEventListener('mouseleave', () => this.priceGuide.hide());
-
-            // Add drag selection handlers
-            this.container.addEventListener('mousedown', this.handleMouseDown.bind(this));
-            this.container.addEventListener('mousemove', this.handleDragMove.bind(this));
-            this.container.addEventListener('mouseup', this.handleMouseUp.bind(this));
-
-            // Add click handler to clear selection
-            this.container.addEventListener('click', this.handleClick.bind(this));
+            // Note: Mouse event handlers have been moved to the respective plugins
 
             // Handle back/forward navigation
             window.addEventListener('popstate', () => {
@@ -1685,76 +1652,7 @@
             });
         }
 
-        /**
-         * Handle mouse movement
-         * @param {MouseEvent} event - Mouse event
-         */
-        handleMouseMove(event) {
-            const chartRect = this.container.getBoundingClientRect();
-            const relativeY = event.clientY - chartRect.top;
-
-            if (this._isInChartArea(relativeY)) {
-                this.priceGuide.update(relativeY, this.currentData);
-            } else {
-                this.priceGuide.hide();
-            }
-
-            // If we're dragging, don't interfere with the drag operation
-            if (this.priceRange.isDraggingActive()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-        }
-
-        /**
-         * Handle mouse down for drag selection
-         * @param {MouseEvent} event - Mouse event
-         */
-        handleMouseDown(event) {
-            const chartRect = this.container.getBoundingClientRect();
-            const relativeY = event.clientY - chartRect.top;
-
-            // Only start dragging if within chart area
-            if (this._isInChartArea(relativeY)) {
-                this.priceRange.startDrag(relativeY);
-                this.priceGuide.hide();
-            }
-        }
-
-        /**
-         * Handle mouse move while dragging
-         * @param {MouseEvent} event - Mouse event
-         */
-        handleDragMove(event) {
-            if (!this.priceRange.isDraggingActive()) return;
-
-            const chartRect = this.container.getBoundingClientRect();
-            const relativeY = Math.max(
-                this.margin.top,
-                Math.min(event.clientY - chartRect.top, chartRect.height - this.margin.bottom)
-            );
-
-            this.priceRange.updateDrag(relativeY);
-        }
-
-        /**
-         * Handle mouse up for drag selection
-         * @param {MouseEvent} event - Mouse event
-         */
-        handleMouseUp(event) {
-            this.priceRange.endDrag();
-        }
-
-        /**
-         * Handle click to clear selection
-         * @param {MouseEvent} event - Mouse event
-         */
-        handleClick(event) {
-            // Clear the selection if not dragging
-            if (!this.priceRange.isDraggingActive()) {
-                this.priceRange.clear();
-            }
-        }
+        // Note: Mouse event handlers have been moved to the respective plugins
 
         /**
          * Check if position is in chart area
@@ -1838,22 +1736,13 @@
             // Clear existing extrema labels
             this.renderer.clearLabels();
 
-            // Draw current price indicator
+            // Get the last data point
             const lastPoint = data[data.length - 1];
-            const currentPriceInfo = this.renderer.updateCurrentPriceIndicator(lastPoint);
-
-            // Update price label
-            this.currentPriceLabel.style.display = 'block';
-            this.currentPriceLabel.textContent = ChartUtils.formatPrice(lastPoint.price);
-            this.currentPriceLabel.style.top = `${currentPriceInfo.y + this.margin.top - 10}px`;
-
+            
             // Add extrema points
             if (extremaPoints && extremaPoints.length > 0) {
                 this.renderer.renderExtremaPoints(extremaPoints);
             }
-
-            // Clear any existing price range selection
-            this.priceRange.clear();
 
             return {
                 success: true,
@@ -2094,9 +1983,66 @@
         }
     }
 
-    // Initialize the chart application
+    // Add plugin support to the chart renderer
+    class ChartRendererWithPlugins extends ChartRenderer {
+        constructor(container, dimensions) {
+            super(container, dimensions);
+            this.pluginManager = null;
+        }
+        
+        // Override resize to notify plugins
+        resize(dimensions) {
+            super.resize(dimensions);
+            
+            if (this.pluginManager) {
+                this.pluginManager.onResize();
+            }
+        }
+    }
+    
+    // Override chart controller to support plugins
+    class ChartControllerWithPlugins extends ChartController {
+        constructor() {
+            super();
+            
+            // Create plugin manager after view is initialized
+            this._initPlugins();
+        }
+        
+        // Initialize plugins
+        _initPlugins() {
+            // Create a plugin manager
+            const renderer = this.view.renderer;
+            const container = this.view.container;
+            
+            // Create the plugin manager
+            renderer.pluginManager = new ChartPluginManager(
+                renderer, container
+            );
+            
+            // Add plugins
+            renderer.pluginManager.add(new CurrentPricePlugin());
+            renderer.pluginManager.add(new PriceRangePlugin());
+            renderer.pluginManager.add(new PriceGuidePlugin());
+        }
+        
+        // Override update chart to notify plugins
+        async updateChart(forceRefresh = false) {
+            const result = await super.updateChart(forceRefresh);
+            
+            // Notify plugins after update
+            if (this.view.renderer.pluginManager) {
+                this.view.renderer.pluginManager.onUpdate();
+            }
+            
+            return result;
+        }
+    }
+    
+    // Initialize the chart application with plugins
     document.addEventListener('DOMContentLoaded', () => {
-        window.cryptoChart = new ChartController();
+        // Create the main chart with plugin support
+        window.cryptoChart = new ChartControllerWithPlugins();
     });
 </script>
 </body>
