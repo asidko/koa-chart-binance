@@ -17,6 +17,8 @@ class PriceGuidePlugin extends ChartPlugin {
       showPercent: true,         // Whether to show % difference from current price
       percentUpColor: '#4caf50', // Color for positive % change
       percentDownColor: '#ff5252', // Color for negative % change
+      movable: false,            // Whether the guide line can be dragged by the label
+      onMoved: null,             // Callback when the line is moved (function(price, event) {})
       ...options
     });
     
@@ -30,6 +32,20 @@ class PriceGuidePlugin extends ChartPlugin {
     this.visible = false;
     this.position = { x: 0, y: 0 };
     this.isDisabled = false; // Disabled when price range is active
+    
+    // Drag state
+    this.dragState = {
+      isDragging: false,
+      startY: 0,
+      offsetY: 0
+    };
+    
+    // Pre-bind methods to preserve 'this' context in event handlers
+    this._boundHandleMouseMove = this._handleMouseMove.bind(this);
+    this._boundHandleMouseLeave = this._handleMouseLeave.bind(this);
+    this._boundHandleLabelMouseDown = this._handleLabelMouseDown.bind(this);
+    this._boundHandleDragMouseMove = this._handleDragMouseMove.bind(this);
+    this._boundHandleDragMouseUp = this._handleDragMouseUp.bind(this);
   }
   
   /**
@@ -92,6 +108,14 @@ class PriceGuidePlugin extends ChartPlugin {
     this.guideLabel.style.borderRadius = '3px';
     this.guideLabel.style.display = 'none'; // Initially hidden
     this.guideLabel.style.zIndex = '11';
+    
+    // Make the label draggable if the movable option is enabled
+    if (this.options.movable) {
+      this.guideLabel.style.pointerEvents = 'auto';
+      this.guideLabel.style.cursor = 'ns-resize';
+      this.guideLabel.style.userSelect = 'none'; // Prevent text selection during drag
+    }
+    
     this.container.appendChild(this.guideLabel); // Add to main container
     
     // Create percent label - add directly to main container
@@ -119,8 +143,8 @@ class PriceGuidePlugin extends ChartPlugin {
    */
   _setupEventListeners() {
     // Mouse events
-    this.container.addEventListener('mousemove', this._handleMouseMove.bind(this));
-    this.container.addEventListener('mouseleave', this._handleMouseLeave.bind(this));
+    this.container.addEventListener('mousemove', this._boundHandleMouseMove);
+    this.container.addEventListener('mouseleave', this._boundHandleMouseLeave);
     
     // Touch events
     if (this.hasTouchSupport) {
@@ -132,6 +156,16 @@ class PriceGuidePlugin extends ChartPlugin {
     // Listen for price range events
     this.container.addEventListener('priceRangeStart', this._handleRangeStart.bind(this));
     this.container.addEventListener('priceRangeEnd', this._handleRangeEnd.bind(this));
+    
+    // Add drag event listeners if the guide is movable
+    if (this.options.movable) {
+      this.guideLabel.addEventListener('mousedown', this._boundHandleLabelMouseDown);
+      
+      // For touch devices, add touch-specific drag handlers
+      if (this.hasTouchSupport) {
+        this.guideLabel.addEventListener('touchstart', this._handleLabelTouchStart.bind(this), { passive: false });
+      }
+    }
   }
   
   /**
@@ -218,6 +252,9 @@ class PriceGuidePlugin extends ChartPlugin {
   _handleMouseMove(event) {
     // Skip if plugin is disabled
     if (!this.enabled) return;
+    
+    // Don't update position if we're currently dragging the guide
+    if (this.dragState.isDragging) return;
     
     const chartRect = this.container.getBoundingClientRect();
     const relativeY = event.clientY - chartRect.top;
@@ -388,6 +425,205 @@ class PriceGuidePlugin extends ChartPlugin {
     if (this.percentLabel) {
       this.percentLabel.style.display = 'none';
     }
+  }
+  
+  /**
+   * Handle label mouse down event to start dragging
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleLabelMouseDown(event) {
+    if (!this.enabled || !this.options.movable) return;
+    
+    // Prevent text selection and default browser behavior
+    event.preventDefault();
+    
+    // Calculate offset from the center of the label to the mouse
+    const labelRect = this.guideLabel.getBoundingClientRect();
+    const labelCenterY = labelRect.top + (labelRect.height / 2);
+    this.dragState.offsetY = event.clientY - labelCenterY;
+    
+    // Set drag state
+    this.dragState.isDragging = true;
+    this.dragState.startY = this.position.y;
+    
+    // Add drag event listeners
+    document.addEventListener('mousemove', this._boundHandleDragMouseMove);
+    document.addEventListener('mouseup', this._boundHandleDragMouseUp);
+  }
+  
+  /**
+   * Handle mouse move during drag
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleDragMouseMove(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Prevent text selection
+    event.preventDefault();
+    
+    const chartRect = this.container.getBoundingClientRect();
+    
+    // Calculate new Y position with offset adjustment
+    let newY = event.clientY - chartRect.top - this.dragState.offsetY;
+    
+    // Constrain to chart area
+    newY = Math.max(
+      this.chart.dimensions.margin.top,
+      Math.min(
+        newY,
+        chartRect.height - this.chart.dimensions.margin.bottom
+      )
+    );
+    
+    // Update position
+    this.position.y = newY;
+    
+    // Update guide display
+    this._updateGuide();
+  }
+  
+  /**
+   * Handle mouse up to end dragging
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleDragMouseUp(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Calculate price at the final position
+    const price = this._calculatePriceAtPosition(this.position.y);
+    
+    // Reset drag state
+    this.dragState.isDragging = false;
+    
+    // Remove drag event listeners
+    document.removeEventListener('mousemove', this._boundHandleDragMouseMove);
+    document.removeEventListener('mouseup', this._boundHandleDragMouseUp);
+    
+    // Trigger onMoved callback if defined
+    if (typeof this.options.onMoved === 'function') {
+      this.options.onMoved(price, event);
+    }
+  }
+  
+  /**
+   * Handle touch start on label to begin drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchStart(event) {
+    if (!this.enabled || !this.options.movable || event.touches.length !== 1) return;
+    
+    // Prevent scroll
+    event.preventDefault();
+    
+    const touch = event.touches[0];
+    
+    // Calculate offset from the center of the label to the touch
+    const labelRect = this.guideLabel.getBoundingClientRect();
+    const labelCenterY = labelRect.top + (labelRect.height / 2);
+    this.dragState.offsetY = touch.clientY - labelCenterY;
+    
+    // Set drag state
+    this.dragState.isDragging = true;
+    this.dragState.startY = this.position.y;
+    
+    // Set up touch move and end listeners
+    this.guideLabel.addEventListener('touchmove', this._handleLabelTouchMove.bind(this), { passive: false });
+    this.guideLabel.addEventListener('touchend', this._handleLabelTouchEnd.bind(this));
+  }
+  
+  /**
+   * Handle touch move during drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchMove(event) {
+    if (!this.dragState.isDragging || event.touches.length !== 1) return;
+    
+    // Prevent scroll
+    event.preventDefault();
+    
+    const touch = event.touches[0];
+    const chartRect = this.container.getBoundingClientRect();
+    
+    // Calculate new Y position with offset adjustment
+    let newY = touch.clientY - chartRect.top - this.dragState.offsetY;
+    
+    // Constrain to chart area
+    newY = Math.max(
+      this.chart.dimensions.margin.top,
+      Math.min(
+        newY,
+        chartRect.height - this.chart.dimensions.margin.bottom
+      )
+    );
+    
+    // Update position
+    this.position.y = newY;
+    
+    // Update guide display
+    this._updateGuide();
+  }
+  
+  /**
+   * Handle touch end to finish drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchEnd(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Calculate price at the final position
+    const price = this._calculatePriceAtPosition(this.position.y);
+    
+    // Reset drag state
+    this.dragState.isDragging = false;
+    
+    // Remove touch event listeners
+    this.guideLabel.removeEventListener('touchmove', this._handleLabelTouchMove);
+    this.guideLabel.removeEventListener('touchend', this._handleLabelTouchEnd);
+    
+    // Trigger onMoved callback if defined
+    if (typeof this.options.onMoved === 'function') {
+      this.options.onMoved(price, event);
+    }
+  }
+  
+  /**
+   * Set the guide to a specific price
+   * @param {number} price - The price to set
+   * @returns {PriceGuidePlugin} - The plugin instance for chaining
+   * @public
+   */
+  setPrice(price) {
+    if (!this.chart || !this.enabled) return this;
+    
+    // Calculate Y position for the price
+    const priceY = this.chart.y(price);
+    const absoluteY = priceY + this.chart.dimensions.margin.top;
+    
+    // Update position
+    this.position.y = absoluteY;
+    
+    // Update the guide and show it
+    this._updateGuide();
+    this._show();
+    
+    return this;
+  }
+  
+  /**
+   * Get the current price of the guide
+   * @returns {number|null} - The current price or null if not available
+   * @public
+   */
+  getPrice() {
+    if (!this.chart || !this.visible) return null;
+    
+    return this._calculatePriceAtPosition(this.position.y);
   }
 }
 
