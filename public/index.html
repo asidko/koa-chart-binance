@@ -18,6 +18,7 @@
     <script src="chart-plugins/price-range.js"></script>
     <script src="chart-plugins/price-guide.js"></script>
     <script src="chart-plugins/middle-line.js"></script>
+    <script src="chart-plugins/movable-line.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -28,6 +29,9 @@
             width: 100%;
             height: 500px;
             position: relative;
+            background-color: white;
+            border-radius: 0.25rem;
+            overflow: hidden;
         }
 
         .line {
@@ -67,57 +71,83 @@
             font-style: italic;
         }
 
-        /* Responsive containers */
-        .chart-container {
-            width: 100% !important;
-            height: auto !important;
+        /* Controls */
+        .controls-panel {
+            background-color: white;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
         }
 
-        /* Make sure SVG scales correctly */
-        svg {
-            display: block;
-            max-width: 100%;
-            height: auto;
+        .control-section {
+            margin-bottom: 0.75rem;
         }
 
-        /* Compact controls */
-        .control-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .control-label {
-            font-weight: bold;
-            white-space: nowrap;
+        .control-section:last-child {
             margin-bottom: 0;
-            font-size: 14px;
-            min-width: 60px;
         }
 
-        .slider-container {
+        .control-heading {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 60px;
+            margin-right: 0.5rem;
+        }
+
+        .options-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .options-group label {
+            margin-bottom: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
+            cursor: pointer;
+        }
+
+        .options-group input {
+            margin-right: 0.25rem;
+        }
+
+        /* Slider controls */
+        .slider-controls {
+            background-color: white;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-row label {
+            font-weight: bold;
+            min-width: 60px;
+            margin-bottom: 0;
+        }
+
+        .slider-row .slider {
             flex: 1;
         }
 
-        .compact-slider {
-            flex: 1;
-            min-width: 100px;
-        }
-
-        .slider-value {
-            min-width: 40px;
-            text-align: right;
+        .value-label {
+            min-width: 2.5rem;
+            text-align: center;
+            background-color: #6c757d;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
         }
 
         /* Context Menu Styles */
@@ -152,22 +182,14 @@
             text-align: center;
             color: #666;
         }
-
-        .context-menu-separator {
-            height: 1px;
-            background-color: #e9ecef;
-            margin: 5px 0;
-        }
         
         /* Responsive design for small screens */
         @media (max-width: 480px) {
-            /* Form controls */
-            .form-check {
-                margin-bottom: 6px;
-                margin-right: 6px;
+            .control-heading {
+                min-width: 50px;
+                font-size: 12px;
             }
             
-            /* Chart axes */
             .axis text {
                 font-size: 9px;
             }
@@ -176,8 +198,11 @@
                 stroke-width: 0.5px;
             }
             
-            /* Controls */
-            .control-label {
+            .options-group {
+                gap: 0.5rem;
+            }
+            
+            .slider-row label {
                 min-width: 50px;
                 font-size: 12px;
             }
@@ -189,114 +214,55 @@
     <h1 id="chart-title" class="text-center mb-3">BTC/USDT 1h Price Chart</h1>
     <div id="loading" class="loading">Loading data...</div>
 
-    <!-- Compact controls layout -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-2">
-            <div class="control-row">
-                <div class="control-group">
-                    <label class="control-label">Coins:</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-btcusdt" name="symbol"
-                                   value="BTCUSDT" checked>
-                            <label class="form-check-label" for="symbol-btcusdt">BTC</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-ethusdt" name="symbol"
-                                   value="ETHUSDT">
-                            <label class="form-check-label" for="symbol-ethusdt">ETH</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-xrpusdt" name="symbol"
-                                   value="XRPUSDT">
-                            <label class="form-check-label" for="symbol-xrpusdt">XRP</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-solusdt" name="symbol"
-                                   value="SOLUSDT">
-                            <label class="form-check-label" for="symbol-solusdt">SOL</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-bnbusdt" name="symbol"
-                                   value="BNBUSDT">
-                            <label class="form-check-label" for="symbol-bnbusdt">BNB</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="symbol-tonusdt" name="symbol"
-                                   value="TONUSDT">
-                            <label class="form-check-label" for="symbol-tonusdt">TON</label>
-                        </div>
-                    </div>
-                </div>
+    <!-- Simplified controls layout -->
+    <div class="controls-panel mb-3">
+        <div class="control-section">
+            <label class="control-heading">Coins:</label>
+            <div class="options-group">
+                <label><input type="radio" name="symbol" value="BTCUSDT" checked> BTC</label>
+                <label><input type="radio" name="symbol" value="ETHUSDT"> ETH</label>
+                <label><input type="radio" name="symbol" value="XRPUSDT"> XRP</label>
+                <label><input type="radio" name="symbol" value="SOLUSDT"> SOL</label>
+                <label><input type="radio" name="symbol" value="BNBUSDT"> BNB</label>
+                <label><input type="radio" name="symbol" value="TONUSDT"> TON</label>
             </div>
-
-            <div class="control-row">
-                <div class="control-group">
-                    <label class="control-label">Interval:</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="interval-1h" name="interval" value="1h"
-                                   checked>
-                            <label class="form-check-label" for="interval-1h">1h</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="interval-2h" name="interval" value="2h">
-                            <label class="form-check-label" for="interval-2h">2h</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="interval-4h" name="interval" value="4h">
-                            <label class="form-check-label" for="interval-4h">4h</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="interval-1d" name="interval" value="1d">
-                            <label class="form-check-label" for="interval-1d">1d</label>
-                        </div>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="radio" id="interval-3d" name="interval" value="3d">
-                            <label class="form-check-label" for="interval-3d">3d</label>
-                        </div>
-                    </div>
-                </div>
+        </div>
+        
+        <div class="control-section">
+            <label class="control-heading">Interval:</label>
+            <div class="options-group">
+                <label><input type="radio" name="interval" value="1h" checked> 1h</label>
+                <label><input type="radio" name="interval" value="2h"> 2h</label>
+                <label><input type="radio" name="interval" value="4h"> 4h</label>
+                <label><input type="radio" name="interval" value="1d"> 1d</label>
+                <label><input type="radio" name="interval" value="3d"> 3d</label>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
-        <div class="card-body p-0">
-            <div id="chart-container" class="chart-container">
-                <!-- Chart plugins will add their UI elements here dynamically -->
-                
-                <!-- Context Menu -->
-                <div id="chart-context-menu" class="context-menu">
-                    <div class="context-menu-item" data-action="refresh">
-                        <i class="fas fa-sync-alt"></i> Refresh Data
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Chart container simplified -->
+    <div class="chart-container mb-3" id="chart-container">
+        <!-- Chart plugins will add their UI elements here dynamically -->
     </div>
 
-    <!-- Sliders moved to bottom of chart with label and slider on same line -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-2">
-            <div class="control-row">
-                <div class="control-group flex-grow-1">
-                    <label class="control-label" for="limit-slider">Limit:</label>
-                    <div class="slider-container">
-                        <input type="range" class="form-range compact-slider" id="limit-slider" min="10" max="500"
-                               step="10" value="100">
-                        <span id="limit-value" class="badge bg-secondary slider-value">100</span>
-                    </div>
-                </div>
-                <div class="control-group flex-grow-1">
-                    <label class="control-label" for="precision-slider">Smooth:</label>
-                    <div class="slider-container">
-                        <input type="range" class="form-range compact-slider" id="precision-slider" min="0" max="1000"
-                               step="1" value="0">
-                        <span id="precision-value" class="badge bg-secondary slider-value">$0</span>
-                    </div>
-                </div>
-            </div>
+    <!-- Simplified sliders layout -->
+    <div class="slider-controls mb-3">
+        <div class="slider-row">
+            <label for="limit-slider">Limit:</label>
+            <input type="range" class="slider form-range" id="limit-slider" min="10" max="500" step="10" value="100">
+            <span id="limit-value" class="value-label">100</span>
+        </div>
+        <div class="slider-row">
+            <label for="precision-slider">Smooth:</label>
+            <input type="range" class="slider form-range" id="precision-slider" min="0" max="1000" step="1" value="0">
+            <span id="precision-value" class="value-label">$0</span>
+        </div>
+    </div>
+    
+    <!-- Context menu moved outside chart for cleaner separation -->
+    <div id="chart-context-menu" class="context-menu">
+        <div class="context-menu-item" data-action="refresh">
+            <i class="fas fa-sync-alt"></i> Refresh Data
         </div>
     </div>
 </div>
