@@ -14,6 +14,7 @@ class ChartPlugin {
     this.name = this.constructor.name;
     this.options = options;
     this.hasTouchSupport = this._detectTouchSupport();
+    this.enabled = true; // Plugin is enabled by default
   }
   
   /**
@@ -41,6 +42,29 @@ class ChartPlugin {
   }
   
   /**
+   * Set the enabled state of the plugin
+   * @param {boolean} enabled - Whether the plugin should be enabled
+   * @returns {ChartPlugin} This plugin instance for chaining
+   */
+  setEnabled(enabled) {
+    const wasEnabled = this.enabled;
+    this.enabled = enabled;
+    
+    // If disabling, clear the plugin's UI
+    if (wasEnabled && !enabled) {
+      this.clear();
+    }
+    
+    // If enabling and we have a chart, we might want to render
+    // (subclasses can override this behavior)
+    if (!wasEnabled && enabled && this.chart) {
+      this.render();
+    }
+    
+    return this;
+  }
+  
+  /**
    * Render the plugin - override in subclasses
    * Responsible for creating/updating visual elements
    */
@@ -60,14 +84,18 @@ class ChartPlugin {
    * Handle chart resize
    */
   onResize() {
-    this.render();
+    if (this.enabled) {
+      this.render();
+    }
   }
   
   /**
    * Handle chart data update
    */
   onUpdate() {
-    this.render();
+    if (this.enabled) {
+      this.render();
+    }
   }
 }
 

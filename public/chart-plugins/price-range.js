@@ -30,6 +30,18 @@ class PriceRangePlugin extends ChartPlugin {
     this.topLabel = null;
     this.bottomLabel = null;
     this.percentLabel = null;
+    
+    // Custom events for plugin communication
+    this.events = {
+      rangeStart: new CustomEvent('priceRangeStart'),
+      rangeEnd: new CustomEvent('priceRangeEnd')
+    };
+    
+    // Pre-bind methods to preserve 'this' context in event handlers
+    this._boundHandleMouseDown = this._handleMouseDown.bind(this);
+    this._boundHandleMouseMove = this._handleMouseMove.bind(this);
+    this._boundHandleMouseUp = this._handleMouseUp.bind(this);
+    this._boundHandleClick = this._handleClick.bind(this);
   }
   
   /**
@@ -66,12 +78,15 @@ class PriceRangePlugin extends ChartPlugin {
     this.rangeZone.style.display = 'none';
     this.container.appendChild(this.rangeZone);
     
+    // Consistent label offset for all labels
+    const labelOffset = 10; // Consistent spacing from chart edge
+    
     // Top label
     this.topLabel = document.createElement('div');
     this.topLabel.className = 'price-range-label';
     this.topLabel.style.position = 'absolute';
     this.topLabel.style.left = 'auto';
-    this.topLabel.style.right = '10px';
+    this.topLabel.style.right = `${labelOffset}px`;
     this.topLabel.style.transform = 'translateY(-50%)';
     this.topLabel.style.backgroundColor = this.options.labelBgColor;
     this.topLabel.style.color = this.options.labelTextColor;
@@ -87,7 +102,7 @@ class PriceRangePlugin extends ChartPlugin {
     this.bottomLabel.className = 'price-range-label';
     this.bottomLabel.style.position = 'absolute';
     this.bottomLabel.style.left = 'auto';
-    this.bottomLabel.style.right = '10px';
+    this.bottomLabel.style.right = `${labelOffset}px`;
     this.bottomLabel.style.transform = 'translateY(-50%)';
     this.bottomLabel.style.backgroundColor = this.options.labelBgColor;
     this.bottomLabel.style.color = this.options.labelTextColor;
@@ -103,7 +118,7 @@ class PriceRangePlugin extends ChartPlugin {
     this.percentLabel.className = 'price-range-percent';
     this.percentLabel.style.position = 'absolute';
     this.percentLabel.style.left = 'auto';
-    this.percentLabel.style.right = '10px';
+    this.percentLabel.style.right = `${labelOffset}px`;
     this.percentLabel.style.transform = 'translateY(-50%)';
     this.percentLabel.style.backgroundColor = this.options.percentLabelBgColor;
     this.percentLabel.style.color = this.options.labelTextColor;
@@ -121,16 +136,10 @@ class PriceRangePlugin extends ChartPlugin {
    */
   _setupEventListeners() {
     // Mouse down to start dragging
-    this.container.addEventListener('mousedown', this._handleMouseDown.bind(this));
-    
-    // Mouse move while dragging
-    this.container.addEventListener('mousemove', this._handleMouseMove.bind(this));
-    
-    // Mouse up to end dragging
-    this.container.addEventListener('mouseup', this._handleMouseUp.bind(this));
+    this.container.addEventListener('mousedown', this._boundHandleMouseDown);
     
     // Click to clear if not dragging
-    this.container.addEventListener('click', this._handleClick.bind(this));
+    this.container.addEventListener('click', this._boundHandleClick);
   }
   
   /**
@@ -139,16 +148,25 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseDown(event) {
-    const chartRect = this.container.getBoundingClientRect();
-    const relativeY = event.clientY - chartRect.top;
+    // Only start drag on left mouse button
+    if (event.button !== 0) return;
     
-    // Only start dragging if within chart area
+    const relativeY = event.clientY - this.container.getBoundingClientRect().top;
+    
     if (this._isInChartArea(relativeY)) {
-      this.dragState = {
-        isDragging: true,
-        startY: relativeY,
-        endY: relativeY
-      };
+      this.dragState.isDragging = true;
+      this.dragState.startY = relativeY;
+      this.dragState.endY = relativeY;
+      
+      // Disable the PriceGuidePlugin while dragging
+      this._disablePriceGuide();
+      
+      // Add event listeners for dragging
+      document.addEventListener('mousemove', this._boundHandleMouseMove);
+      document.addEventListener('mouseup', this._boundHandleMouseUp);
+      
+      // Prevent text selection during drag
+      event.preventDefault();
     }
   }
   
@@ -181,13 +199,31 @@ class PriceRangePlugin extends ChartPlugin {
   _handleMouseUp(event) {
     if (!this.dragState.isDragging) return;
     
-    const isSignificantDrag = Math.abs(this.dragState.endY - this.dragState.startY) >= 5;
+    // Update end position
+    const relativeY = event.clientY - this.container.getBoundingClientRect().top;
+    this.dragState.endY = relativeY;
     
-    if (!isSignificantDrag) {
+    // Check if the range is too small (click vs. drag)
+    const rangeHeight = Math.abs(this.dragState.endY - this.dragState.startY);
+    if (rangeHeight < 5) {
+      // Treat as a click rather than a drag
       this.clear();
+      
+      // Re-enable PriceGuidePlugin if we're clearing
+      this._enablePriceGuide();
+    } else {
+      this._updateRangeDisplay();
+      
+      // If we're showing a range, keep PriceGuidePlugin disabled
+      // It will be re-enabled when the user clears the range
     }
     
+    // End drag state
     this.dragState.isDragging = false;
+    
+    // Remove event listeners
+    document.removeEventListener('mousemove', this._boundHandleMouseMove);
+    document.removeEventListener('mouseup', this._boundHandleMouseUp);
   }
   
   /**
@@ -289,13 +325,66 @@ class PriceRangePlugin extends ChartPlugin {
   }
   
   /**
+   * Disable the PriceGuidePlugin
+   * @private
+   */
+  _disablePriceGuide() {
+    if (this.chart && this.chart.pluginManager) {
+      const priceGuidePlugin = this.chart.pluginManager.get('PriceGuidePlugin');
+      if (priceGuidePlugin) {
+        priceGuidePlugin.setEnabled(false);
+      }
+    }
+  }
+  
+  /**
+   * Enable the PriceGuidePlugin
+   * @private
+   */
+  _enablePriceGuide() {
+    if (this.chart && this.chart.pluginManager) {
+      const priceGuidePlugin = this.chart.pluginManager.get('PriceGuidePlugin');
+      if (priceGuidePlugin) {
+        priceGuidePlugin.setEnabled(true);
+      }
+    }
+  }
+  
+  /**
    * Clear the price range display
    */
   clear() {
+    // Hide all elements
     this.rangeZone.style.display = 'none';
     this.topLabel.style.display = 'none';
     this.bottomLabel.style.display = 'none';
     this.percentLabel.style.display = 'none';
+    
+    // Reset drag state
+    this.dragState.isDragging = false;
+    
+    // Re-enable the PriceGuidePlugin
+    this._enablePriceGuide();
+  }
+  
+  /**
+   * Set plugin enabled state
+   * @param {boolean} enabled - Whether the plugin should be enabled
+   * @returns {PriceRangePlugin} - The plugin instance
+   * @override
+   */
+  setEnabled(enabled) {
+    // Call parent method first
+    super.setEnabled(enabled);
+    
+    // If we're disabling this plugin, ensure we clear any active range
+    if (!enabled) {
+      this.clear();
+      // When this plugin is disabled, make sure PriceGuidePlugin is re-enabled
+      this._enablePriceGuide();
+    }
+    
+    return this;
   }
 }
 

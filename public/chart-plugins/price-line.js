@@ -21,6 +21,7 @@ class PriceLinePlugin extends ChartPlugin {
       showBullet: false,         // Whether to show a bullet point at the end of the line
       bulletRadius: 4,           // Radius of the bullet point if shown
       position: 'right',         // Label position: 'left', 'right'
+      tooltip: null,             // Optional tooltip text for hover (if null, uses label)
       ...options
     });
     
@@ -210,19 +211,29 @@ class PriceLinePlugin extends ChartPlugin {
       labelText = this._formatPrice(this.options.price);
     }
     
+    // Set tooltip/title if provided, otherwise use label
+    const tooltipText = this.options.tooltip !== null ? this.options.tooltip : labelText;
+    this.labelElement.setAttribute('title', tooltipText);
+    
     // Get the text span element (second child if icon exists)
     const textSpan = this.labelElement.querySelector('span');
     if (textSpan) {
       textSpan.textContent = labelText;
     }
     
-    // Position label
+    // Position label consistently relative to chart edges
+    const labelOffset = 10; // Consistent spacing from chart edge
+    
     if (this.options.position === 'left') {
-      this.labelElement.style.left = `${margin.left - 5}px`;
+      // Position left of the chart area with consistent spacing
+      this.labelElement.style.left = `${margin.left + labelOffset}px`;
       this.labelElement.style.right = 'auto';
+      this.labelElement.style.transform = 'translateX(-100%) translateY(-50%)';
     } else {
+      // Position right of the chart area with consistent spacing
       this.labelElement.style.left = 'auto';
-      this.labelElement.style.right = `${margin.right + 5}px`;
+      this.labelElement.style.right = `${margin.right + labelOffset}px`;
+      this.labelElement.style.transform = 'translateY(-50%)';
     }
     
     this.labelElement.style.top = `${margin.top + yPos}px`;

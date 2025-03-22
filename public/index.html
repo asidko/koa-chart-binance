@@ -17,6 +17,7 @@
     <script src="chart-plugins/current-price.js"></script>
     <script src="chart-plugins/price-range.js"></script>
     <script src="chart-plugins/price-guide.js"></script>
+    <script src="chart-plugins/middle-line.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -1184,7 +1185,7 @@
 
             // Chart configuration
             /** @type {{top: number, right: number, bottom: number, left: number}} */
-            this.margin = {top: 20, right: 60, bottom: 40, left: 60}; 
+            this.margin = {top: 20, right: 80, bottom: 40, left: 80}; 
 
             // Calculate initial dimensions based on container
             this._calculateDimensions();
@@ -1246,11 +1247,11 @@
 
             // On very small screens, adjust left margin for axis labels
             if (containerWidth < 400) {
-                this.margin.left = 45; // Smaller margin
-                this.margin.right = 45; // Smaller margin
+                this.margin.left = 60; // Smaller margin
+                this.margin.right = 60; // Smaller margin
             } else {
-                this.margin.left = 60; // Default margin
-                this.margin.right = 60; // Default margin
+                this.margin.left = 80; // Default margin
+                this.margin.right = 80; // Default margin
             }
         }
 
@@ -1440,6 +1441,7 @@
             renderer.pluginManager.add(new CurrentPricePlugin());
             renderer.pluginManager.add(new PriceRangePlugin());
             renderer.pluginManager.add(new PriceGuidePlugin());
+            renderer.pluginManager.add(new MiddleLinePlugin());
         }
         
         /**

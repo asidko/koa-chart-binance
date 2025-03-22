@@ -29,6 +29,7 @@ class PriceGuidePlugin extends ChartPlugin {
     // Current state
     this.visible = false;
     this.position = { x: 0, y: 0 };
+    this.isDisabled = false; // Disabled when price range is active
   }
   
   /**
@@ -53,7 +54,10 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _createElements() {
-    // Create container
+    // Consistent label offset for all labels
+    const labelOffset = 10; // Consistent spacing from chart edge
+    
+    // Create container for the line only
     this.guideContainer = document.createElement('div');
     this.guideContainer.className = 'price-guide';
     this.guideContainer.style.position = 'absolute';
@@ -74,35 +78,38 @@ class PriceGuidePlugin extends ChartPlugin {
     this.guideLine.style.borderTop = `1px dashed ${this.options.lineColor}`;
     this.guideContainer.appendChild(this.guideLine);
     
-    // Create price label
+    // Create price label - add directly to main container
     this.guideLabel = document.createElement('div');
     this.guideLabel.className = 'price-guide-label';
     this.guideLabel.style.position = 'absolute';
     this.guideLabel.style.left = 'auto';
-    this.guideLabel.style.right = '10px';
+    this.guideLabel.style.right = `${labelOffset}px`;
     this.guideLabel.style.transform = 'translateY(-50%)';
     this.guideLabel.style.backgroundColor = this.options.labelBgColor;
     this.guideLabel.style.color = this.options.labelTextColor;
     this.guideLabel.style.fontSize = '12px';
     this.guideLabel.style.padding = '3px 8px';
     this.guideLabel.style.borderRadius = '3px';
-    this.guideContainer.appendChild(this.guideLabel);
+    this.guideLabel.style.display = 'none'; // Initially hidden
+    this.guideLabel.style.zIndex = '11';
+    this.container.appendChild(this.guideLabel); // Add to main container
     
-    // Create percent label
+    // Create percent label - add directly to main container
     if (this.options.showPercent) {
       this.percentLabel = document.createElement('div');
       this.percentLabel.className = 'price-guide-percent';
       this.percentLabel.style.position = 'absolute';
       this.percentLabel.style.left = 'auto';
-      this.percentLabel.style.right = '10px';
+      this.percentLabel.style.right = `${labelOffset}px`;
       this.percentLabel.style.transform = 'translateY(-50%)';
       this.percentLabel.style.backgroundColor = this.options.labelBgColor;
       this.percentLabel.style.color = this.options.labelTextColor;
       this.percentLabel.style.fontSize = '11px';
       this.percentLabel.style.padding = '2px 6px';
       this.percentLabel.style.borderRadius = '3px';
-      this.percentLabel.style.top = '20px';
-      this.guideContainer.appendChild(this.percentLabel);
+      this.percentLabel.style.display = 'none'; // Initially hidden
+      this.percentLabel.style.zIndex = '11';
+      this.container.appendChild(this.percentLabel); // Add to main container
     }
   }
   
@@ -121,6 +128,27 @@ class PriceGuidePlugin extends ChartPlugin {
       this.container.addEventListener('touchmove', this._handleTouchMove.bind(this), { passive: false });
       this.container.addEventListener('touchend', this._handleTouchEnd.bind(this), { passive: true });
     }
+    
+    // Listen for price range events
+    this.container.addEventListener('priceRangeStart', this._handleRangeStart.bind(this));
+    this.container.addEventListener('priceRangeEnd', this._handleRangeEnd.bind(this));
+  }
+  
+  /**
+   * Handle price range start event
+   * @private
+   */
+  _handleRangeStart() {
+    this.isDisabled = true;
+    this._hide();
+  }
+  
+  /**
+   * Handle price range end event
+   * @private
+   */
+  _handleRangeEnd() {
+    this.isDisabled = false;
   }
   
   /**
@@ -129,10 +157,11 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _handleTouchStart(event) {
-    // Show the guide on touch
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
     if (event.touches.length === 1) {
-      const touch = event.touches[0];
-      this._processTouchPosition(touch);
+      this._processTouchPosition(event.touches[0]);
     }
   }
   
@@ -142,14 +171,12 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _handleTouchMove(event) {
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
     if (event.touches.length === 1) {
-      const touch = event.touches[0];
-      this._processTouchPosition(touch);
-      
-      // Prevent scrolling while showing price guide
-      if (this.visible) {
-        event.preventDefault();
-      }
+      this._processTouchPosition(event.touches[0]);
+      event.preventDefault();
     }
   }
   
@@ -158,10 +185,10 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _handleTouchEnd() {
-    // Keep the guide visible for a moment before hiding
-    setTimeout(() => {
-      this._hide();
-    }, 1500); // Hide after 1.5 seconds
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
+    this._hide();
   }
   
   /**
@@ -170,6 +197,9 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _processTouchPosition(touch) {
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
     const chartRect = this.container.getBoundingClientRect();
     const relativeY = touch.clientY - chartRect.top;
     
@@ -186,6 +216,9 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseMove(event) {
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
     const chartRect = this.container.getBoundingClientRect();
     const relativeY = event.clientY - chartRect.top;
     
@@ -204,6 +237,9 @@ class PriceGuidePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseLeave() {
+    // Skip if plugin is disabled
+    if (!this.enabled) return;
+    
     this._hide();
   }
   
@@ -225,6 +261,10 @@ class PriceGuidePlugin extends ChartPlugin {
   _hide() {
     if (this.visible) {
       this.guideContainer.style.opacity = '0';
+      this.guideLabel.style.display = 'none';
+      if (this.percentLabel) {
+        this.percentLabel.style.display = 'none';
+      }
       this.visible = false;
     }
   }
@@ -239,8 +279,10 @@ class PriceGuidePlugin extends ChartPlugin {
     // Update container position
     this.guideContainer.style.top = `${this.position.y}px`;
     
-    // Update label content
+    // Update price label
     this.guideLabel.textContent = this._formatPrice(price);
+    this.guideLabel.style.top = `${this.position.y}px`;
+    this.guideLabel.style.display = 'block';
     
     // Update percent difference if enabled
     if (this.options.showPercent && this.chart.lastData && this.chart.lastData.length > 0) {
@@ -256,6 +298,10 @@ class PriceGuidePlugin extends ChartPlugin {
         this.percentLabel.style.backgroundColor = percentDiff >= 0 
           ? this.options.percentUpColor 
           : this.options.percentDownColor;
+        
+        // Position the percent label 20px below the price label
+        this.percentLabel.style.top = `${this.position.y + 20}px`;
+        this.percentLabel.style.display = 'block';
       }
     }
   }
@@ -335,6 +381,13 @@ class PriceGuidePlugin extends ChartPlugin {
    */
   clear() {
     this._hide();
+    
+    // Ensure all elements are hidden
+    this.guideContainer.style.opacity = '0';
+    this.guideLabel.style.display = 'none';
+    if (this.percentLabel) {
+      this.percentLabel.style.display = 'none';
+    }
   }
 }
 
