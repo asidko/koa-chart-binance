@@ -1,6 +1,7 @@
 /**
  * Price Line Plugin
- * Displays a horizontal price line with customizable styles and optional labels
+ * Displays a horizontal price line with customizable styles and optional labels.
+ * The price line can be static or draggable by setting the movable option.
  */
 
 class PriceLinePlugin extends ChartPlugin {
@@ -22,6 +23,7 @@ class PriceLinePlugin extends ChartPlugin {
       bulletRadius: 4,           // Radius of the bullet point if shown
       position: 'right',         // Label position: 'left', 'right'
       tooltip: null,             // Optional tooltip text for hover (if null, uses label)
+      movable: false,            // Whether the line can be dragged up/down by its label
       ...options
     });
     
@@ -48,6 +50,13 @@ class PriceLinePlugin extends ChartPlugin {
     this.line = null;
     this.bullet = null;
     this.labelElement = null;
+    
+    // Drag state for movable price lines
+    this.dragState = {
+      isDragging: false,
+      startY: 0,
+      offsetY: 0
+    };
   }
   
   /**
@@ -150,11 +159,39 @@ class PriceLinePlugin extends ChartPlugin {
     this.labelElement.style.borderRadius = '3px';
     this.labelElement.style.fontSize = '12px';
     this.labelElement.style.fontWeight = 'bold';
-    this.labelElement.style.pointerEvents = 'none';
+    this.labelElement.style.pointerEvents = 'none'; // Default is none
     this.labelElement.style.zIndex = '5';
     this.labelElement.style.transform = 'translateY(-50%)';
     this.labelElement.style.display = 'flex';
     this.labelElement.style.alignItems = 'center';
+    
+    // Make the label draggable if movable option is enabled
+    if (this.options.movable) {
+      // Enable pointer events and set cursor for draggable behavior
+      this.labelElement.style.pointerEvents = 'auto';
+      this.labelElement.style.cursor = 'ns-resize';
+      this.labelElement.style.userSelect = 'none'; // Prevent text selection during drag
+      
+      // Pre-bind drag event handlers for mouse interaction
+      this._boundHandleLabelMouseDown = this._handleLabelMouseDown.bind(this);
+      this._boundHandleDragMouseMove = this._handleDragMouseMove.bind(this);
+      this._boundHandleDragMouseUp = this._handleDragMouseUp.bind(this);
+      
+      // Add mousedown event listener to start dragging
+      this.labelElement.addEventListener('mousedown', this._boundHandleLabelMouseDown);
+      
+      // Add touch support if available
+      if (this.hasTouchSupport) {
+        this._boundHandleLabelTouchStart = this._handleLabelTouchStart.bind(this);
+        this._boundHandleLabelTouchMove = this._handleLabelTouchMove.bind(this);
+        this._boundHandleLabelTouchEnd = this._handleLabelTouchEnd.bind(this);
+        
+        this.labelElement.addEventListener('touchstart', this._boundHandleLabelTouchStart, { passive: false });
+      }
+      
+      // Set a tooltip to indicate the label is draggable
+      this.labelElement.title = 'Drag to adjust price level';
+    }
     
     // Add icon if specified
     if (this.options.icon) {
@@ -286,6 +323,171 @@ class PriceLinePlugin extends ChartPlugin {
     
     // Basic formatting fallback
     return price.toFixed(2);
+  }
+
+  /**
+   * Handle label touch start on label to begin drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchStart(event) {
+    if (!this.enabled || !this.options.movable || event.touches.length !== 1) return;
+    
+    // Prevent scroll
+    event.preventDefault();
+    
+    const touch = event.touches[0];
+    
+    // Calculate offset from the center of the label to the touch
+    const labelRect = this.labelElement.getBoundingClientRect();
+    const labelCenterY = labelRect.top + (labelRect.height / 2);
+    this.dragState.offsetY = touch.clientY - labelCenterY;
+    
+    // Set drag state
+    this.dragState.isDragging = true;
+    this.dragState.startY = this.chart.y(this.options.price);
+    
+    // Add touch event listeners using the pre-bound functions
+    this.labelElement.addEventListener('touchmove', this._boundHandleLabelTouchMove, { passive: false });
+    this.labelElement.addEventListener('touchend', this._boundHandleLabelTouchEnd);
+  }
+
+  /**
+   * Handle touch move during drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchMove(event) {
+    if (!this.dragState.isDragging || event.touches.length !== 1) return;
+    
+    // Prevent scroll
+    event.preventDefault();
+    
+    const touch = event.touches[0];
+    const chartRect = this.container.getBoundingClientRect();
+    
+    // Calculate new Y position with offset adjustment
+    let newY = touch.clientY - chartRect.top - this.chart.dimensions.margin.top - this.dragState.offsetY;
+    
+    // Constrain to chart area
+    newY = Math.max(
+      0,
+      Math.min(
+        newY,
+        this.chart.dimensions.height
+      )
+    );
+    
+    // Convert Y position to price
+    const price = this.chart.y.invert(newY);
+    
+    // Update the price
+    this.options.price = price;
+    
+    // Re-render
+    this.render();
+  }
+
+  /**
+   * Handle touch end to finish drag
+   * @param {TouchEvent} event - Touch event
+   * @private
+   */
+  _handleLabelTouchEnd(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Reset drag state
+    this.dragState.isDragging = false;
+    
+    // Remove touch event listeners using the pre-bound functions
+    this.labelElement.removeEventListener('touchmove', this._boundHandleLabelTouchMove);
+    this.labelElement.removeEventListener('touchend', this._boundHandleLabelTouchEnd);
+    
+    // Trigger onMoved callback if defined
+    if (typeof this.options.onMoved === 'function') {
+      this.options.onMoved(this.options.price, event);
+    }
+  }
+
+  /**
+   * Handle label mouse down event to start dragging
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleLabelMouseDown(event) {
+    if (!this.enabled || !this.options.movable) return;
+    
+    // Prevent text selection and default browser behavior
+    event.preventDefault();
+    
+    // Calculate offset from the center of the label to the mouse
+    const labelRect = this.labelElement.getBoundingClientRect();
+    const labelCenterY = labelRect.top + (labelRect.height / 2);
+    this.dragState.offsetY = event.clientY - labelCenterY;
+    
+    // Set drag state
+    this.dragState.isDragging = true;
+    this.dragState.startY = this.chart.y(this.options.price);
+    
+    // Add drag event listeners
+    document.addEventListener('mousemove', this._boundHandleDragMouseMove);
+    document.addEventListener('mouseup', this._boundHandleDragMouseUp);
+  }
+
+  /**
+   * Handle mouse move during drag
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleDragMouseMove(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Prevent text selection
+    event.preventDefault();
+    
+    const chartRect = this.container.getBoundingClientRect();
+    
+    // Calculate new Y position with offset adjustment
+    let newY = event.clientY - chartRect.top - this.chart.dimensions.margin.top - this.dragState.offsetY;
+    
+    // Constrain to chart area
+    newY = Math.max(
+      0,
+      Math.min(
+        newY,
+        this.chart.dimensions.height
+      )
+    );
+    
+    // Convert Y position to price
+    const price = this.chart.y.invert(newY);
+    
+    // Update the price
+    this.options.price = price;
+    
+    // Re-render
+    this.render();
+  }
+
+  /**
+   * Handle mouse up to end dragging
+   * @param {MouseEvent} event - Mouse event
+   * @private
+   */
+  _handleDragMouseUp(event) {
+    if (!this.dragState.isDragging) return;
+    
+    // Reset drag state
+    this.dragState.isDragging = false;
+    
+    // Remove drag event listeners
+    document.removeEventListener('mousemove', this._boundHandleDragMouseMove);
+    document.removeEventListener('mouseup', this._boundHandleDragMouseUp);
+    
+    // Trigger onMoved callback if defined
+    if (typeof this.options.onMoved === 'function') {
+      this.options.onMoved(this.options.price, event);
+    }
   }
 }
 

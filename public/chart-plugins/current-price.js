@@ -1,6 +1,6 @@
 /**
  * Current Price Plugin
- * Displays a horizontal line at the current price with a bullet point and label
+ * Displays a horizontal line at the current price with a bullet point and label.
  */
 
 class CurrentPricePlugin extends ChartPlugin {
@@ -39,7 +39,8 @@ class CurrentPricePlugin extends ChartPlugin {
       color: this.options.lineColor,
       showBullet: this.options.showBullet,
       icon: this.options.icon,
-      position: 'right'
+      position: 'right',
+      movable: false  // Disable movable functionality
     });
     
     // Initialize the price line plugin
