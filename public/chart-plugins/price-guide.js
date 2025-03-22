@@ -129,9 +129,16 @@ class PriceGuidePlugin extends ChartPlugin {
     
     // Touch events
     if (this.hasTouchSupport) {
-      this.container.addEventListener('touchstart', this._handleTouchStart.bind(this), { passive: true });
-      this.container.addEventListener('touchmove', this._handleTouchMove.bind(this), { passive: false });
-      this.container.addEventListener('touchend', this._handleTouchEnd.bind(this), { passive: true });
+      this._boundHandleTouchStart = this._handleTouchStart.bind(this);
+      this._boundHandleTouchMove = this._handleTouchMove.bind(this);
+      this._boundHandleTouchEnd = this._handleTouchEnd.bind(this);
+      
+      this.container.addEventListener('touchstart', this._boundHandleTouchStart, { passive: true });
+      this.container.addEventListener('touchmove', this._boundHandleTouchMove, { passive: false });
+      this.container.addEventListener('touchend', this._boundHandleTouchEnd, { passive: true });
+      
+      // Add tap event for better mobile support
+      this.container.addEventListener('click', this._handleClick.bind(this));
     }
     
     // Listen for price range events
@@ -163,7 +170,7 @@ class PriceGuidePlugin extends ChartPlugin {
    */
   _handleTouchStart(event) {
     // Skip if plugin is disabled
-    if (!this.enabled) return;
+    if (!this.enabled || this.isDisabled) return;
     
     if (event.touches.length === 1) {
       this._processTouchPosition(event.touches[0]);
@@ -325,8 +332,8 @@ class PriceGuidePlugin extends ChartPlugin {
         this.percentLabel.textContent = formattedPercent;
         this.percentLabel.style.display = 'block';
         
-        // Position percentage label 25px below the price label
-        this.percentLabel.style.top = `${y + 25}px`;
+        // Position percentage label 8px below the price label (closer to price label)
+        this.percentLabel.style.top = `${y + 20}px`;
         
         // Color based on positive/negative change
         const changeColor = percentDiff >= 0 ? this.options.percentUpColor : this.options.percentDownColor;
@@ -405,6 +412,30 @@ class PriceGuidePlugin extends ChartPlugin {
   }
   
   /**
+   * Handle click event (for touch devices)
+   * @param {MouseEvent} event - Click event
+   * @private
+   */
+  _handleClick(event) {
+    // Skip if plugin is disabled
+    if (!this.enabled || this.isDisabled) return;
+    
+    const chartRect = this.container.getBoundingClientRect();
+    const relativeY = event.clientY - chartRect.top;
+    
+    if (this._isInChartArea(relativeY)) {
+      this.position.y = relativeY;
+      this._updateGuide(relativeY);
+      this._show();
+      
+      // Hide guide after short delay
+      setTimeout(() => {
+        this._hide();
+      }, 3000);
+    }
+  }
+  
+  /**
    * Render the plugin
    * This plugin renders based on mouse events
    */
@@ -436,9 +467,10 @@ class PriceGuidePlugin extends ChartPlugin {
     this.container.removeEventListener('mouseleave', this._boundHandleMouseLeave);
     
     if (this.hasTouchSupport) {
-      this.container.removeEventListener('touchstart', this._handleTouchStart);
-      this.container.removeEventListener('touchmove', this._handleTouchMove);
-      this.container.removeEventListener('touchend', this._handleTouchEnd);
+      this.container.removeEventListener('touchstart', this._boundHandleTouchStart);
+      this.container.removeEventListener('touchmove', this._boundHandleTouchMove);
+      this.container.removeEventListener('touchend', this._boundHandleTouchEnd);
+      this.container.removeEventListener('click', this._handleClick);
     }
     
     this.container.removeEventListener('priceRangeStart', this._handleRangeStart);
