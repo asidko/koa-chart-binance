@@ -312,7 +312,7 @@ class PriceGuidePlugin extends ChartPlugin {
     this.guideLabel.style.top = `${y}px`;
     
     // Calculate percent change if enabled
-    if (this.options.showPercentChange && this.chart.lastData && this.chart.lastData.length > 0) {
+    if (this.options.showPercent && this.chart.lastData && this.chart.lastData.length > 0) {
       // Get the latest price from chart data
       const latestPrice = this.chart.lastData[this.chart.lastData.length - 1].price;
       
@@ -324,10 +324,12 @@ class PriceGuidePlugin extends ChartPlugin {
       if (this.percentLabel) {
         this.percentLabel.textContent = formattedPercent;
         this.percentLabel.style.display = 'block';
-        this.percentLabel.style.top = `${y}px`;
+        
+        // Position percentage label 25px below the price label
+        this.percentLabel.style.top = `${y + 25}px`;
         
         // Color based on positive/negative change
-        const changeColor = percentDiff >= 0 ? '#4caf50' : '#ff5252';
+        const changeColor = percentDiff >= 0 ? this.options.percentUpColor : this.options.percentDownColor;
         this.percentLabel.style.backgroundColor = changeColor;
         
         // Match font size with price label
