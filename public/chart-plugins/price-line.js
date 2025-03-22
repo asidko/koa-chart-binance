@@ -148,7 +148,6 @@ class PriceLinePlugin extends ChartPlugin {
     this.labelElement.style.color = this.options.labelTextColor;
     this.labelElement.style.padding = '3px 8px';
     this.labelElement.style.borderRadius = '3px';
-    this.labelElement.style.fontSize = '12px';
     this.labelElement.style.fontWeight = 'bold';
     this.labelElement.style.pointerEvents = 'none';
     this.labelElement.style.zIndex = '5';
@@ -164,14 +163,26 @@ class PriceLinePlugin extends ChartPlugin {
       this.labelElement.appendChild(iconElement);
     }
     
-    // Add label text span
+    // Add span for text content (always add this for easier updates)
     const textSpan = document.createElement('span');
     this.labelElement.appendChild(textSpan);
     
-    // Add label to container
+    // Add to container
     this.container.appendChild(this.labelElement);
-    
-    return this;
+  }
+  
+  /**
+   * Handle chart resize
+   * Override base implementation to ensure label positions are updated
+   */
+  onResize() {
+    if (this.enabled && this.chart) {
+      // Ensure we have the latest chart dimensions and scales
+      const { dimensions, x, y } = this.chart;
+      
+      // Force label recalculation and repositioning
+      this.render();
+    }
   }
   
   /**
@@ -182,10 +193,14 @@ class PriceLinePlugin extends ChartPlugin {
       return;
     }
     
-    // Get dimensions
+    // Get dimensions - always use fresh values from chart
     const { width, height, margin } = this.chart.dimensions;
     
-    // Calculate Y position based on price
+    // Check if we're on a small screen
+    const containerWidth = this.container.clientWidth;
+    const isSmallScreen = containerWidth < 600;
+    
+    // Calculate Y position based on price - use latest scale
     const yPos = this.chart.y(this.options.price);
     
     // Update line
@@ -221,8 +236,25 @@ class PriceLinePlugin extends ChartPlugin {
       textSpan.textContent = labelText;
     }
     
+    // Adapt label size to screen width (similar to extrema labels)
+    if (isSmallScreen) {
+      // Smaller size for small screens - but not too small
+      this.labelElement.style.padding = '2px 6px';
+      this.labelElement.style.fontSize = '10px';
+      if (this.options.icon && this.labelElement.querySelector('i')) {
+        this.labelElement.querySelector('i').style.fontSize = '10px';
+      }
+    } else {
+      // Normal size for larger screens
+      this.labelElement.style.padding = '3px 8px';
+      this.labelElement.style.fontSize = '12px';
+      if (this.options.icon && this.labelElement.querySelector('i')) {
+        this.labelElement.querySelector('i').style.fontSize = '12px';
+      }
+    }
+    
     // Position label consistently relative to chart edges
-    const labelOffset = 10; // Consistent spacing from chart edge
+    const labelOffset = isSmallScreen ? 8 : 10; // Slightly smaller offset on small screens
     
     if (this.options.position === 'left') {
       // Position left of the chart area with consistent spacing

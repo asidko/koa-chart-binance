@@ -3,99 +3,91 @@
  */
 
 /**
- * Base plugin class for chart features
+ * Base Chart Plugin class
+ * All chart plugins should extend this class
  */
 class ChartPlugin {
   /**
-   * Create a plugin
-   * @param {Object} options - Configuration options
+   * Create a new plugin
+   * @param {Object} options - Plugin options
    */
   constructor(options = {}) {
+    this.options = {...options};
     this.name = this.constructor.name;
-    this.options = options;
-    this.hasTouchSupport = this._detectTouchSupport();
-    this.enabled = true; // Plugin is enabled by default
+    this.enabled = true;
+    this.chart = null;
+    this.container = null;
   }
   
   /**
-   * Detect if device has touch support
-   * @returns {boolean} True if touch is supported
-   * @private
-   */
-  _detectTouchSupport() {
-    return ('ontouchstart' in window) || 
-           (navigator.maxTouchPoints > 0) || 
-           (navigator.msMaxTouchPoints > 0);
-  }
-  
-  /**
-   * Initialize the plugin with chart components
-   * @param {Object} chart - Chart renderer with D3 elements
+   * Initialize the plugin with chart and container references
+   * @param {Object} chart - Chart renderer
    * @param {HTMLElement} container - Container element
    */
   init(chart, container) {
     this.chart = chart;
     this.container = container;
-    
-    // Override this method in subclasses to perform initialization
     return this;
   }
   
   /**
-   * Set the enabled state of the plugin
+   * Render the plugin elements
+   * Should be implemented by subclasses
+   */
+  render() {
+    // To be implemented by subclasses
+    console.log(`${this.name} render() not implemented`);
+  }
+  
+  /**
+   * Clear/hide the plugin elements
+   */
+  clear() {
+    // Default implementation does nothing
+    // Subclasses should override to clean up DOM elements
+  }
+  
+  /**
+   * Enable or disable the plugin
    * @param {boolean} enabled - Whether the plugin should be enabled
    * @returns {ChartPlugin} This plugin instance for chaining
    */
   setEnabled(enabled) {
-    const wasEnabled = this.enabled;
     this.enabled = enabled;
-    
-    // If disabling, clear the plugin's UI
-    if (wasEnabled && !enabled) {
-      this.clear();
-    }
-    
-    // If enabling and we have a chart, we might want to render
-    // (subclasses can override this behavior)
-    if (!wasEnabled && enabled && this.chart) {
-      this.render();
-    }
-    
     return this;
   }
   
   /**
-   * Render the plugin - override in subclasses
-   * Responsible for creating/updating visual elements
-   */
-  render() {
-    // For subclasses to implement
-  }
-  
-  /**
-   * Clear plugin elements - override in subclasses
-   * Responsible for removing/cleaning up visual elements
-   */
-  clear() {
-    // For subclasses to implement
-  }
-  
-  /**
    * Handle chart resize
+   * Default implementation re-renders if enabled
    */
   onResize() {
-    if (this.enabled) {
+    if (this.enabled && this.chart) {
+      console.log(`${this.name} resize triggered`);
+      // Re-render when the chart is resized
       this.render();
     }
   }
   
   /**
    * Handle chart data update
+   * Default implementation re-renders if enabled
    */
   onUpdate() {
     if (this.enabled) {
+      // Re-render when data updates
       this.render();
     }
+  }
+  
+  /**
+   * Destroy the plugin
+   * Override to perform cleanup
+   */
+  destroy() {
+    this.clear();
+    this.chart = null;
+    this.container = null;
   }
 }
 

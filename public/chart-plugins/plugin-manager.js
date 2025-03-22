@@ -1,71 +1,87 @@
 /**
  * Chart Plugin Manager
- * Manages plugins for the chart application
+ * Manages multiple plugins for a chart
  */
 
 class ChartPluginManager {
   /**
-   * Create a new plugin manager
-   * @param {Object} chartRenderer - Chart renderer instance
-   * @param {HTMLElement} container - Chart container element
+   * Create a plugin manager
+   * @param {Object} chart - Chart renderer
+   * @param {HTMLElement} container - Chart container
    */
-  constructor(chartRenderer, container) {
-    this.chartRenderer = chartRenderer;
+  constructor(chart, container) {
+    this.chart = chart;
     this.container = container;
-    this.plugins = new Map();
+    this.plugins = [];
   }
   
   /**
-   * Add a plugin to the chart
-   * @param {ChartPlugin} plugin - Plugin instance
-   * @returns {ChartPluginManager} This manager instance
+   * Add a plugin
+   * @param {ChartPlugin} plugin - Plugin to add
+   * @returns {ChartPlugin} The added plugin
    */
   add(plugin) {
-    // Initialize the plugin
-    plugin.init(this.chartRenderer, this.container);
-    
-    // Store by name
-    this.plugins.set(plugin.name, plugin);
-    
-    // Render immediately
-    plugin.render();
-    
-    return this;
+    plugin.init(this.chart, this.container);
+    this.plugins.push(plugin);
+    return plugin;
   }
   
   /**
-   * Get a plugin by name
-   * @param {string} name - Plugin name
-   * @returns {ChartPlugin|undefined} The plugin if found
+   * Notify plugins of data update
    */
-  get(name) {
-    return this.plugins.get(name);
+  onUpdate() {
+    for (const plugin of this.plugins) {
+      if (plugin.enabled) {
+        plugin.render();
+      }
+    }
   }
   
   /**
-   * Handle chart resize
+   * Notify plugins of chart resize
    */
   onResize() {
-    for (const plugin of this.plugins.values()) {
+    console.log(`Notifying ${this.plugins.length} plugins of resize`);
+    for (const plugin of this.plugins) {
+      // Always call onResize regardless of enabled state
+      // This ensures plugins can update internal state even if disabled
       plugin.onResize();
     }
   }
   
   /**
-   * Handle chart update
+   * Get a plugin by its index
+   * @param {number} index - Plugin index
+   * @returns {ChartPlugin|null} Plugin or null if not found
    */
-  onUpdate() {
-    for (const plugin of this.plugins.values()) {
-      plugin.onUpdate();
+  getByIndex(index) {
+    return this.plugins[index] || null;
+  }
+  
+  /**
+   * Find a plugin by type
+   * @param {Function} pluginType - Plugin class/constructor
+   * @returns {ChartPlugin|null} First matching plugin or null
+   */
+  getByType(pluginType) {
+    return this.plugins.find(plugin => plugin instanceof pluginType) || null;
+  }
+  
+  /**
+   * Enable all plugins
+   */
+  enableAll() {
+    for (const plugin of this.plugins) {
+      plugin.setEnabled(true);
     }
   }
   
   /**
-   * Remove all plugins
+   * Disable all plugins
    */
-  clear() {
-    for (const plugin of this.plugins.values()) {
-      plugin.clear();
+  disableAll() {
+    for (const plugin of this.plugins) {
+      plugin.setEnabled(false);
     }
   }
 }

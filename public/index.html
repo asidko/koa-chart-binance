@@ -871,9 +871,13 @@
             this.dimensions = dimensions;
             const {width, height, margin} = dimensions;
 
-            // Update SVG viewBox
-            d3.select(this.container).select('svg')
-                .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
+            // Update SVG container and viewBox
+            const svgContainer = d3.select(this.container).select('svg');
+            svgContainer
+                .attr('width', '100%')
+                .attr('height', height + margin.top + margin.bottom)
+                .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+                .attr('preserveAspectRatio', 'xMidYMid meet');
 
             // Update clipPath
             this.svg.select("#chart-area-clip rect")
@@ -889,6 +893,9 @@
 
             // Update generators
             this.areaGenerator.y0(height);
+            this.lineGenerator
+                .x(d => this.x(new Date(d.timestamp)))
+                .y(d => this.y(d.price));
 
             // Update labels
             this.dateRangeLabel.attr('transform', `translate(${width / 2},15)`);
@@ -1156,6 +1163,10 @@
             // Calculate initial dimensions based on container
             this._calculateDimensions();
 
+            // Set initial container height explicitly to match dimensions
+            const totalHeight = this.height + this.margin.top + this.margin.bottom;
+            this.container.style.height = `${totalHeight}px`;
+
             // Initialize chart renderer with plugin support
             this.renderer = new ChartRendererWithPlugins(this.container, {
                 width: this.width,
@@ -1204,21 +1215,37 @@
             // Get the actual container width
             const containerWidth = this.container.clientWidth;
 
+            // Set margins based on screen size - more balanced approach
+            if (containerWidth < 480) {
+                // Mobile screens - modest margin reduction
+                this.margin.left = 60;
+                this.margin.right = 60;
+                this.margin.top = 20;
+                this.margin.bottom = 35;
+            } else {
+                // Desktop screens - standard margins
+                this.margin.left = 80;
+                this.margin.right = 80;
+                this.margin.top = 20;
+                this.margin.bottom = 40;
+            }
+
             /** @type {number} Chart width */
             this.width = Math.max(300, containerWidth - this.margin.left - this.margin.right);
 
             /** @type {number} Chart height */
-            // Maintain aspect ratio or use fixed height
-            this.height = Math.max(200, Math.min(500, Math.round(this.width * 0.5)) - this.margin.top - this.margin.bottom);
-
-            // On very small screens, adjust left margin for axis labels
-            if (containerWidth < 400) {
-                this.margin.left = 60; // Smaller margin
-                this.margin.right = 60; // Smaller margin
-            } else {
-                this.margin.left = 80; // Default margin
-                this.margin.right = 80; // Default margin
+            // Adaptive aspect ratio based on screen size
+            let aspectRatio = 0.5; // Standard aspect ratio for desktop
+            
+            if (containerWidth < 480) {
+                // Slightly taller for mobile (not too extreme)
+                aspectRatio = 0.55;
             }
+            
+            this.height = Math.round(this.width * aspectRatio);
+            
+            // Ensure minimum and maximum height
+            this.height = Math.max(200, Math.min(500, this.height));
         }
 
         /**
@@ -1228,6 +1255,10 @@
         _handleResize() {
             // Recalculate dimensions
             this._calculateDimensions();
+
+            // Update container height explicitly to match new dimensions
+            const totalHeight = this.height + this.margin.top + this.margin.bottom;
+            this.container.style.height = `${totalHeight}px`;
 
             // Resize the renderer
             this.renderer.resize({
@@ -1662,8 +1693,10 @@
         resize(dimensions) {
             this._proxyMethod('resize', dimensions);
             
-            // Update local reference
+            // Update local references - important to keep these in sync
             this.dimensions = this.renderer.dimensions;
+            this.x = this.renderer.x;
+            this.y = this.renderer.y;
             
             // Notify plugins
             if (this.pluginManager) {
