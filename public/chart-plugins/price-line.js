@@ -178,7 +178,7 @@ class PriceLinePlugin extends ChartPlugin {
    * Render the price line elements
    */
   render() {
-    if (!this.chart) {
+    if (!this.chart || !this.enabled) {
       return;
     }
     
@@ -286,6 +286,37 @@ class PriceLinePlugin extends ChartPlugin {
     
     // Basic formatting fallback
     return price.toFixed(2);
+  }
+  
+  /**
+   * Override setEnabled to handle visibility
+   * @param {boolean} enabled - Whether the plugin should be enabled
+   * @returns {PriceLinePlugin} This plugin instance for chaining
+   */
+  setEnabled(enabled) {
+    const wasEnabled = this.enabled;
+    
+    // Call parent method
+    super.setEnabled(enabled);
+    
+    // Update visibility directly if we have elements and the state changed
+    if (wasEnabled !== enabled && this.line) {
+      if (!enabled) {
+        // Hide elements
+        this.line.style('display', 'none');
+        if (this.bullet) this.bullet.style('display', 'none');
+        if (this.labelElement) this.labelElement.style.display = 'none';
+      } else {
+        // Show elements
+        this.line.style('display', null);
+        if (this.bullet) this.bullet.style('display', null);
+        if (this.labelElement) this.labelElement.style.display = 'flex';
+        // Re-render to update positions
+        this.render();
+      }
+    }
+    
+    return this;
   }
 }
 

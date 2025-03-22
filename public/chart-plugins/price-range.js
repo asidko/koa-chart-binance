@@ -148,6 +148,9 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseDown(event) {
+    // Only proceed if plugin is enabled
+    if (!this.enabled) return;
+    
     // Only start drag on left mouse button
     if (event.button !== 0) return;
     
@@ -176,7 +179,7 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseMove(event) {
-    if (!this.dragState.isDragging) return;
+    if (!this.enabled || !this.dragState.isDragging) return;
     
     const chartRect = this.container.getBoundingClientRect();
     const relativeY = Math.max(
@@ -197,7 +200,7 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _handleMouseUp(event) {
-    if (!this.dragState.isDragging) return;
+    if (!this.enabled || !this.dragState.isDragging) return;
     
     // Update end position
     const relativeY = event.clientY - this.container.getBoundingClientRect().top;
@@ -232,6 +235,8 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _handleClick(event) {
+    if (!this.enabled) return;
+    
     // Only clear if we're not at the end of a drag operation
     if (!this.dragState.isDragging) {
       this.clear();
@@ -329,12 +334,8 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _disablePriceGuide() {
-    if (this.chart && this.chart.pluginManager) {
-      const priceGuidePlugin = this.chart.pluginManager.get('PriceGuidePlugin');
-      if (priceGuidePlugin) {
-        priceGuidePlugin.setEnabled(false);
-      }
-    }
+    // Dispatch event for other plugins to listen to
+    this.container.dispatchEvent(this.events.rangeStart);
   }
   
   /**
@@ -342,12 +343,8 @@ class PriceRangePlugin extends ChartPlugin {
    * @private
    */
   _enablePriceGuide() {
-    if (this.chart && this.chart.pluginManager) {
-      const priceGuidePlugin = this.chart.pluginManager.get('PriceGuidePlugin');
-      if (priceGuidePlugin) {
-        priceGuidePlugin.setEnabled(true);
-      }
-    }
+    // Dispatch event for other plugins to listen to
+    this.container.dispatchEvent(this.events.rangeEnd);
   }
   
   /**
@@ -374,13 +371,18 @@ class PriceRangePlugin extends ChartPlugin {
    * @override
    */
   setEnabled(enabled) {
+    const wasEnabled = this.enabled;
+    
     // Call parent method first
     super.setEnabled(enabled);
     
-    // If we're disabling this plugin, ensure we clear any active range
-    if (!enabled) {
-      this.clear();
-      // When this plugin is disabled, make sure PriceGuidePlugin is re-enabled
+    // If we're disabling and were in the middle of a drag, clean up
+    if (wasEnabled && !enabled && this.dragState.isDragging) {
+      this.dragState.isDragging = false;
+      document.removeEventListener('mousemove', this._boundHandleMouseMove);
+      document.removeEventListener('mouseup', this._boundHandleMouseUp);
+      
+      // Re-enable price guide if we were in the middle of something
       this._enablePriceGuide();
     }
     
