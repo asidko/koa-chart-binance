@@ -18,6 +18,9 @@ class PriceLinePlugin extends ChartPlugin {
       icon: null,                // Optional Font Awesome icon name (without 'fa-' prefix)
       labelBgColor: null,        // Background color of label (defaults to line color)
       labelTextColor: 'white',   // Text color for the price label
+      labelTextSize: null,       // Text size for label (if null, will be responsive)
+      labelPadding: null,        // Padding for label (if null, will be responsive)
+      opacity: 0.85,             // Opacity for the label background
       showBullet: false,         // Whether to show a bullet point at the end of the line
       bulletRadius: 4,           // Radius of the bullet point if shown
       position: 'right',         // Label position: 'left', 'right'
@@ -145,8 +148,8 @@ class PriceLinePlugin extends ChartPlugin {
     this.labelElement.className = 'price-line-label';
     this.labelElement.style.position = 'absolute';
     this.labelElement.style.backgroundColor = this.options.labelBgColor;
+    this.labelElement.style.opacity = String(this.options.opacity); // Semi-transparent
     this.labelElement.style.color = this.options.labelTextColor;
-    this.labelElement.style.padding = '3px 8px';
     this.labelElement.style.borderRadius = '3px';
     this.labelElement.style.fontWeight = 'bold';
     this.labelElement.style.pointerEvents = 'none';
@@ -236,20 +239,30 @@ class PriceLinePlugin extends ChartPlugin {
       textSpan.textContent = labelText;
     }
     
-    // Adapt label size to screen width (similar to extrema labels)
-    if (isSmallScreen) {
-      // Smaller size for small screens - but not too small
-      this.labelElement.style.padding = '2px 6px';
-      this.labelElement.style.fontSize = '10px';
+    // Adapt label size to screen width
+    if (this.options.labelTextSize && this.options.labelPadding) {
+      // Use provided values directly
+      if (isSmallScreen) {
+        // Still use smaller font on mobile
+        this.labelElement.style.fontSize = '8px';
+        this.labelElement.style.padding = '2px 5px';
+      } else {
+        this.labelElement.style.fontSize = this.options.labelTextSize;
+        this.labelElement.style.padding = this.options.labelPadding;
+      }
+    } else if (isSmallScreen) {
+      // Smaller size for small screens
+      this.labelElement.style.padding = '2px 5px';
+      this.labelElement.style.fontSize = '8px';
       if (this.options.icon && this.labelElement.querySelector('i')) {
-        this.labelElement.querySelector('i').style.fontSize = '10px';
+        this.labelElement.querySelector('i').style.fontSize = '8px';
       }
     } else {
       // Normal size for larger screens
-      this.labelElement.style.padding = '3px 8px';
-      this.labelElement.style.fontSize = '12px';
+      this.labelElement.style.padding = '2px 7px';
+      this.labelElement.style.fontSize = '10px';
       if (this.options.icon && this.labelElement.querySelector('i')) {
-        this.labelElement.querySelector('i').style.fontSize = '12px';
+        this.labelElement.querySelector('i').style.fontSize = '10px';
       }
     }
     

@@ -46,7 +46,11 @@ class MiddleLinePlugin extends ChartPlugin {
       color: this.options.lineColor,
       showBullet: this.options.showBullet,
       icon: this.options.icon,
-      position: this.options.position
+      position: this.options.position,
+      // Ensure label follows the same styling as other labels
+      labelTextSize: '10px',
+      labelPadding: '2px 7px',
+      opacity: 0.8
     });
     
     // Initialize the price line plugin

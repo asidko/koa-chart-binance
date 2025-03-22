@@ -90,14 +90,14 @@ class PriceGuidePlugin extends ChartPlugin {
     this.guideLabel.style.right = `${labelOffset}px`;
     this.guideLabel.style.transform = 'translateY(-50%)';
     this.guideLabel.style.backgroundColor = this.options.labelBgColor;
+    this.guideLabel.style.opacity = '0.8'; // Semi-transparent
     this.guideLabel.style.color = this.options.labelTextColor;
-    this.guideLabel.style.fontSize = '12px';
-    this.guideLabel.style.padding = '3px 8px';
+    this.guideLabel.style.fontSize = '10px';
+    this.guideLabel.style.padding = '2px 6px';
     this.guideLabel.style.borderRadius = '3px';
     this.guideLabel.style.display = 'none'; // Initially hidden
     this.guideLabel.style.zIndex = '11';
-    
-    this.container.appendChild(this.guideLabel); // Add to main container
+    this.container.appendChild(this.guideLabel);
     
     // Create percent label - add directly to main container
     if (this.options.showPercent) {
@@ -210,7 +210,7 @@ class PriceGuidePlugin extends ChartPlugin {
     
     if (this._isInChartArea(relativeY)) {
       this.position.y = relativeY;
-      this._updateGuide();
+      this._updateGuide(relativeY);
       this._show();
     }
   }
@@ -229,7 +229,7 @@ class PriceGuidePlugin extends ChartPlugin {
     
     if (this._isInChartArea(relativeY)) {
       this.position.y = relativeY;
-      this._updateGuide();
+      this._updateGuide(relativeY);
       this._show();
     }
   }
@@ -276,36 +276,67 @@ class PriceGuidePlugin extends ChartPlugin {
    * Update the guide position and content
    * @private
    */
-  _updateGuide() {
-    const price = this._calculatePriceAtPosition(this.position.y);
+  _updateGuide(y) {
+    if (!this.chart) return;
     
-    // Update container position
-    this.guideContainer.style.top = `${this.position.y}px`;
+    // Update line position
+    this.guideContainer.style.top = `${y}px`;
     
-    // Update price label
-    this.guideLabel.textContent = this._formatPrice(price);
-    this.guideLabel.style.top = `${this.position.y}px`;
+    // Show the guide elements
+    this.guideContainer.style.opacity = '1';
     this.guideLabel.style.display = 'block';
     
-    // Update percent difference if enabled
-    if (this.options.showPercent && this.chart.lastData && this.chart.lastData.length > 0) {
-      const lastPoint = this.chart.lastData[this.chart.lastData.length - 1];
-      const lastPrice = lastPoint.price;
+    // Check if we're on a small screen
+    const containerWidth = this.container.clientWidth;
+    const isSmallScreen = containerWidth < 600;
+    
+    // Calculate price at current position
+    const price = this._calculatePriceAtPosition(y);
+    
+    // Format the price based on market price (could be very small for some coins)
+    const formattedPrice = ChartUtils.formatPrice(price);
+    
+    // Update label text
+    this.guideLabel.textContent = formattedPrice;
+    
+    // Adjust label size based on screen size
+    if (isSmallScreen) {
+      this.guideLabel.style.fontSize = '8px';
+      this.guideLabel.style.padding = '2px 5px';
+    } else {
+      this.guideLabel.style.fontSize = '10px';
+      this.guideLabel.style.padding = '2px 6px';
+    }
+    
+    // Position the label at the cursor position
+    this.guideLabel.style.top = `${y}px`;
+    
+    // Calculate percent change if enabled
+    if (this.options.showPercentChange && this.chart.lastData && this.chart.lastData.length > 0) {
+      // Get the latest price from chart data
+      const latestPrice = this.chart.lastData[this.chart.lastData.length - 1].price;
       
-      if (lastPrice !== null) {
-        const percentDiff = this._calculatePercentDifference(price, lastPrice);
-        const formattedPercent = this._formatPercent(percentDiff);
-        
-        // Set content and color
+      // Calculate percentage difference from current price to guide price
+      const percentDiff = ChartUtils.calculatePercentDifference(price, latestPrice);
+      const formattedPercent = ChartUtils.formatPercent(percentDiff);
+      
+      // Update percent label if configured
+      if (this.percentLabel) {
         this.percentLabel.textContent = formattedPercent;
-        this.percentLabel.style.backgroundColor = percentDiff >= 0 
-          ? this.options.percentUpColor 
-          : this.options.percentDownColor;
-        
-        // Position the percent label 20px below the price label
-        this.percentLabel.style.top = `${this.position.y + 20}px`;
         this.percentLabel.style.display = 'block';
+        this.percentLabel.style.top = `${y}px`;
+        
+        // Color based on positive/negative change
+        const changeColor = percentDiff >= 0 ? '#4caf50' : '#ff5252';
+        this.percentLabel.style.backgroundColor = changeColor;
+        
+        // Match font size with price label
+        this.percentLabel.style.fontSize = isSmallScreen ? '8px' : '10px';
+        this.percentLabel.style.padding = isSmallScreen ? '2px 5px' : '2px 6px';
       }
+    } else if (this.percentLabel) {
+      // Hide percent label if not showing percent change
+      this.percentLabel.style.display = 'none';
     }
   }
   

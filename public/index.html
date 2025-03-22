@@ -878,6 +878,10 @@
                 .attr('height', height + margin.top + margin.bottom)
                 .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
+                
+            // Update transform of main SVG group - this is crucial for positioning
+            this.svg
+                .attr('transform', `translate(${margin.left},${margin.top})`);
 
             // Update clipPath
             this.svg.select("#chart-area-clip rect")
@@ -956,13 +960,39 @@
         }
 
         /**
+         * Calculate appropriate tick count based on width
+         * @param {number} width - Chart width
+         * @param {number} [factor=1] - Adjustment factor
+         * @returns {number} - Appropriate tick count
+         * @private
+         */
+        _calculateTickCount(width, factor = 1) {
+            let baseTicks;
+            
+            if (width < 480) {
+                // More ticks on mobile devices (min 5 ticks)
+                baseTicks = Math.max(5, Math.floor(width / 60));
+            } else if (width < 768) {
+                // Middle range - use a more conservative approach to prevent overlap
+                baseTicks = Math.max(4, Math.floor(width / 90));
+            } else {
+                // Desktop - standard calculation
+                baseTicks = Math.max(4, Math.floor(width / 100));
+            }
+            
+            return Math.round(baseTicks * factor);
+        }
+
+        /**
          * Update axes with current scales, adapting to screen size
          */
         updateAxes() {
             const {width} = this.dimensions;
+            const isSmallScreen = width < 480;
+            const isMediumScreen = width >= 480 && width < 768;
 
             // Calculate number of ticks based on width
-            const xTickCount = this._calculateTickCount(width);
+            const xTickCount = this._calculateTickCount(width, isSmallScreen ? 1.5 : (isMediumScreen ? 1.2 : 1));
             const yTickCount = this._calculateTickCount(width, 0.6);
 
             // Update X axis with adaptive ticks
@@ -973,19 +1003,27 @@
                         // For small screens, simplify the date format
                         if (width < 500) {
                             return d3.timeFormat("%d/%m")(d);
+                        } else if (width < 768) {
+                            // For medium screens, use slightly more compact format
+                            return d3.timeFormat("%d %b %H")(d);
                         }
                         return d3.timeFormat("%b %d %H:%M")(d);
                     })
             );
 
-            // Update Y axis with adaptive ticks
+            // Update Y axis with adaptive ticks - hide labels on mobile
             this.yAxis.call(
                 d3.axisLeft(this.y)
                     .ticks(yTickCount)
-                    .tickFormat(d => `${d.toLocaleString()}`)
+                    .tickFormat(d => {
+                        if (isSmallScreen) {
+                            return ""; // Hide labels on small screens
+                        }
+                        return `${d.toLocaleString()}`;
+                    })
             );
 
-            // Update grid lines
+            // Update grid lines - keep these visible on all screen sizes
             this.xGrid.call(
                 d3.axisBottom(this.x)
                     .ticks(Math.max(5, xTickCount))
@@ -999,23 +1037,6 @@
                     .tickSize(-this.dimensions.width)
                     .tickFormat('')
             );
-        }
-
-        /**
-         * Calculate appropriate tick count based on width
-         * @param {number} width - Chart width
-         * @param {number} [factor=1] - Adjustment factor
-         * @returns {number} - Appropriate tick count
-         * @private
-         */
-        _calculateTickCount(width, factor = 1) {
-            // Base calculation for ticks
-            let tickCount = Math.floor(width / 100) * factor;
-
-            // Ensure reasonable limits
-            tickCount = Math.max(3, Math.min(10, tickCount));
-
-            return tickCount;
         }
 
         /**
@@ -1059,9 +1080,9 @@
             const isSmallScreen = width < 600;
 
             // Adjust label size for small screens
-            const labelWidth = isSmallScreen ? 44 : 60;
-            const labelHeight = isSmallScreen ? 16 : 20;
-            const fontSize = isSmallScreen ? '9px' : '11px';
+            const labelWidth = isSmallScreen ? 40 : 54;
+            const labelHeight = isSmallScreen ? 14 : 18;
+            const fontSize = isSmallScreen ? '8px' : '10px';
 
             extremaPoints.forEach(point => {
                 const pointX = this.x(new Date(point.timestamp));
@@ -1079,7 +1100,7 @@
                     .attr('rx', 3)
                     .attr('ry', 3)
                     .attr('fill', color)
-                    .attr('opacity', 0.85);
+                    .attr('opacity', 0.8);
 
                 // Price text
                 this.svg.append('text')
@@ -1217,9 +1238,9 @@
 
             // Set margins based on screen size - more balanced approach
             if (containerWidth < 480) {
-                // Mobile screens - modest margin reduction
-                this.margin.left = 60;
-                this.margin.right = 60;
+                // Mobile screens - reduced margins for wider chart
+                this.margin.left = 30;
+                this.margin.right = 30;
                 this.margin.top = 20;
                 this.margin.bottom = 35;
             } else {

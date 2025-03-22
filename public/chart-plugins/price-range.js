@@ -89,9 +89,10 @@ class PriceRangePlugin extends ChartPlugin {
     this.topLabel.style.right = `${labelOffset}px`;
     this.topLabel.style.transform = 'translateY(-50%)';
     this.topLabel.style.backgroundColor = this.options.labelBgColor;
+    this.topLabel.style.opacity = '0.8'; // Semi-transparent
     this.topLabel.style.color = this.options.labelTextColor;
-    this.topLabel.style.fontSize = '12px';
-    this.topLabel.style.padding = '3px 8px';
+    this.topLabel.style.fontSize = '10px';
+    this.topLabel.style.padding = '2px 7px';
     this.topLabel.style.borderRadius = '3px';
     this.topLabel.style.zIndex = '3';
     this.topLabel.style.display = 'none';
@@ -105,9 +106,10 @@ class PriceRangePlugin extends ChartPlugin {
     this.bottomLabel.style.right = `${labelOffset}px`;
     this.bottomLabel.style.transform = 'translateY(-50%)';
     this.bottomLabel.style.backgroundColor = this.options.labelBgColor;
+    this.bottomLabel.style.opacity = '0.8'; // Semi-transparent
     this.bottomLabel.style.color = this.options.labelTextColor;
-    this.bottomLabel.style.fontSize = '12px';
-    this.bottomLabel.style.padding = '3px 8px';
+    this.bottomLabel.style.fontSize = '10px';
+    this.bottomLabel.style.padding = '2px 7px';
     this.bottomLabel.style.borderRadius = '3px';
     this.bottomLabel.style.zIndex = '3';
     this.bottomLabel.style.display = 'none';
@@ -121,8 +123,9 @@ class PriceRangePlugin extends ChartPlugin {
     this.percentLabel.style.right = `${labelOffset}px`;
     this.percentLabel.style.transform = 'translateY(-50%)';
     this.percentLabel.style.backgroundColor = this.options.percentLabelBgColor;
+    this.percentLabel.style.opacity = '0.8'; // Semi-transparent
     this.percentLabel.style.color = this.options.labelTextColor;
-    this.percentLabel.style.fontSize = '11px';
+    this.percentLabel.style.fontSize = '10px';
     this.percentLabel.style.padding = '2px 6px';
     this.percentLabel.style.borderRadius = '3px';
     this.percentLabel.style.zIndex = '3';
@@ -268,6 +271,27 @@ class PriceRangePlugin extends ChartPlugin {
     this.rangeZone.style.height = `${height}px`;
     this.rangeZone.style.left = `${margin.left}px`;
     this.rangeZone.style.right = `${margin.right}px`;
+    
+    // Check if we're on a small screen
+    const containerWidth = this.container.clientWidth;
+    const isSmallScreen = containerWidth < 600;
+    
+    // Adjust label size based on screen size
+    if (isSmallScreen) {
+      this.topLabel.style.fontSize = '8px';
+      this.topLabel.style.padding = '2px 5px';
+      this.bottomLabel.style.fontSize = '8px';
+      this.bottomLabel.style.padding = '2px 5px';
+      this.percentLabel.style.fontSize = '8px';
+      this.percentLabel.style.padding = '2px 5px';
+    } else {
+      this.topLabel.style.fontSize = '10px';
+      this.topLabel.style.padding = '2px 7px';
+      this.bottomLabel.style.fontSize = '10px';
+      this.bottomLabel.style.padding = '2px 7px';
+      this.percentLabel.style.fontSize = '10px';
+      this.percentLabel.style.padding = '2px 6px';
+    }
     
     // Update labels
     this.topLabel.style.display = 'block';
