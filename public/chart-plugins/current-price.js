@@ -11,19 +11,17 @@ class CurrentPricePlugin extends ChartPlugin {
   constructor(options = {}) {
     super({
       lineColor: '#3498db',      // Color of the price line
-      lineWidth: 1,              // Width of the price line
-      lineDash: [5, 3],          // Dash pattern for the line
-      bulletRadius: 6,           // Radius of the bullet point
-      bulletStrokeWidth: 1,      // Stroke width of the bullet
-      labelBgColor: '#3498db',   // Background color of the price label
-      labelTextColor: 'white',   // Text color for the price label
+      lineStyle: 'dashed',       // Style of the price line: 'solid' or 'dashed'
+      showBullet: true,          // Whether to show bullet point
+      icon: null,                // Optional icon to show in label
       ...options
     });
     
-    // References to D3 elements
-    this.line = null;
-    this.bullet = null;
-    this.label = null;
+    // Internal state
+    this.currentPrice = null;
+    
+    // The price line plugin instance
+    this.priceLine = null;
   }
   
   /**
@@ -34,36 +32,18 @@ class CurrentPricePlugin extends ChartPlugin {
   init(chart, container) {
     super.init(chart, container);
     
-    // Create D3 elements
-    this.line = this.chart.svg.append('line')
-      .attr('class', 'current-price-line')
-      .attr('stroke', this.options.lineColor)
-      .attr('stroke-width', this.options.lineWidth)
-      .attr('stroke-dasharray', this.options.lineDash.join(','));
+    // Create price line plugin with initial options
+    this.priceLine = new PriceLinePlugin({
+      price: 0,
+      style: this.options.lineStyle,
+      color: this.options.lineColor,
+      showBullet: this.options.showBullet,
+      icon: this.options.icon,
+      position: 'right'
+    });
     
-    this.bullet = this.chart.svg.append('circle')
-      .attr('class', 'current-price-bullet')
-      .attr('r', this.options.bulletRadius)
-      .attr('fill', this.options.lineColor)
-      .attr('stroke', 'white')
-      .attr('stroke-width', this.options.bulletStrokeWidth);
-    
-    // Create label as a DOM element for better control
-    this.labelElement = document.createElement('div');
-    this.labelElement.className = 'current-price-label';
-    this.labelElement.style.position = 'absolute';
-    this.labelElement.style.backgroundColor = this.options.labelBgColor;
-    this.labelElement.style.color = this.options.labelTextColor;
-    this.labelElement.style.padding = '3px 8px';
-    this.labelElement.style.borderRadius = '3px';
-    this.labelElement.style.fontSize = '12px';
-    this.labelElement.style.fontWeight = 'bold';
-    this.labelElement.style.pointerEvents = 'none';
-    this.labelElement.style.zIndex = '5';
-    this.labelElement.style.transform = 'translateY(-50%)';
-    
-    // Add label to container
-    this.container.appendChild(this.labelElement);
+    // Initialize the price line plugin
+    this.priceLine.init(chart, container);
     
     return this;
   }
@@ -77,71 +57,21 @@ class CurrentPricePlugin extends ChartPlugin {
       return;
     }
     
-    // Get dimensions and the last data point
-    const { width, height, margin } = this.chart.dimensions;
+    // Get the last data point
     const lastPoint = this.chart.lastData[this.chart.lastData.length - 1];
+    this.currentPrice = lastPoint.price;
     
-    // Calculate positions
-    const lastX = this.chart.x(new Date(lastPoint.timestamp));
-    const lastY = this.chart.y(lastPoint.price);
-    
-    // Update line
-    this.line
-      .attr('x1', 0)
-      .attr('x2', width)
-      .attr('y1', lastY)
-      .attr('y2', lastY);
-    
-    // Update bullet
-    this.bullet
-      .attr('cx', lastX)
-      .attr('cy', lastY);
-    
-    // Update label
-    const formattedPrice = this._formatPrice(lastPoint.price);
-    this.labelElement.textContent = formattedPrice;
-    // Position label on the right side of the chart
-    this.labelElement.style.left = 'auto';
-    this.labelElement.style.right = `${margin.right + 10}px`;
-    this.labelElement.style.top = `${margin.top + lastY}px`;
-    this.labelElement.style.display = 'block';
-    
-    // Ensure elements are on top
-    this.chart.svg.node().appendChild(this.line.node());
-    this.chart.svg.node().appendChild(this.bullet.node());
+    // Update the price line plugin with the current price
+    this.priceLine.updatePrice(this.currentPrice);
   }
   
   /**
    * Clear/hide the current price elements
    */
   clear() {
-    if (this.line) {
-      this.line.attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 0);
+    if (this.priceLine) {
+      this.priceLine.clear();
     }
-    
-    if (this.bullet) {
-      this.bullet.attr('cx', 0).attr('cy', 0);
-    }
-    
-    if (this.labelElement) {
-      this.labelElement.style.display = 'none';
-    }
-  }
-  
-  /**
-   * Format price for display
-   * @param {number} price - Price to format
-   * @returns {string} Formatted price
-   * @private
-   */
-  _formatPrice(price) {
-    // Use the chart's utility if available
-    if (window.ChartUtils && typeof window.ChartUtils.formatPrice === 'function') {
-      return window.ChartUtils.formatPrice(price);
-    }
-    
-    // Basic formatting fallback
-    return price.toFixed(2);
   }
 }
 
