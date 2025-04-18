@@ -20,6 +20,7 @@
     <script src="chart-plugins/price-range.js"></script>
     <script src="chart-plugins/price-guide.js"></script>
     <script src="chart-plugins/middle-line.js"></script>
+    <script src="chart-plugins/x-axis.js"></script>
     <script src="chart-plugins/movable-line.js"></script>
     <style>
         body {
@@ -997,20 +998,7 @@
             const yTickCount = this._calculateTickCount(width, 0.6);
 
             // Update X axis with adaptive ticks
-            this.xAxis.call(
-                d3.axisBottom(this.x)
-                    .ticks(xTickCount)
-                    .tickFormat(d => {
-                        // For small screens, simplify the date format
-                        if (width < 500) {
-                            return d3.timeFormat("%d/%m")(d);
-                        } else if (width < 768) {
-                            // For medium screens, use slightly more compact format
-                            return d3.timeFormat("%d %b %H")(d);
-                        }
-                        return d3.timeFormat("%b %d %H:%M")(d);
-                    })
-            );
+            XAxisController.render(this.xAxis, this.x, this.dimensions);
 
             // Update Y axis with adaptive ticks - hide labels on mobile
             this.yAxis.call(
@@ -1027,7 +1015,7 @@
             // Update grid lines - keep these visible on all screen sizes
             this.xGrid.call(
                 d3.axisBottom(this.x)
-                    .ticks(Math.max(5, xTickCount))
+                    .ticks(Math.max(5, Math.round(XAxisController.calculateBaseTicks(width) * (width < 480 ? 1.5 : (width < 768 ? 1.2 : 1)))))
                     .tickSize(-this.dimensions.height)
                     .tickFormat('')
             );
