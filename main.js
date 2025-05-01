@@ -25,7 +25,7 @@ router.get('/api/btc-price', async (ctx) => {
     try {
         // Get query parameters with defaults
         const symbol = ctx.query.symbol || 'BTCUSDT';
-        const interval = ctx.query.interval || '1h';
+        const interval = ctx.query.interval || '1d';
         const limit = parseInt(ctx.query.limit) || 168;
 
         // Create a cache key from request parameters

@@ -214,7 +214,7 @@
 </head>
 <body>
 <div class="container py-4">
-    <h1 id="chart-title" class="text-center mb-3">BTC/USDT 1h Price Chart</h1>
+    <h1 id="chart-title" class="text-center mb-3">BTC/USDT 1d Price Chart</h1>
     <div id="loading" class="loading">Loading data...</div>
 
     <!-- Simplified controls layout -->
@@ -228,16 +228,17 @@
                 <label><input type="radio" name="symbol" value="SOLUSDT"> SOL</label>
                 <label><input type="radio" name="symbol" value="BNBUSDT"> BNB</label>
                 <label><input type="radio" name="symbol" value="TONUSDT"> TON</label>
+                <label><input type="radio" name="symbol" value="DOGEUSDT"> DOGE</label>
             </div>
         </div>
         
         <div class="control-section">
             <label class="control-heading">Interval:</label>
             <div class="options-group">
-                <label><input type="radio" name="interval" value="1h" checked> 1h</label>
+                <label><input type="radio" name="interval" value="1h"> 1h</label>
                 <label><input type="radio" name="interval" value="2h"> 2h</label>
                 <label><input type="radio" name="interval" value="4h"> 4h</label>
-                <label><input type="radio" name="interval" value="1d"> 1d</label>
+                <label><input type="radio" name="interval" value="1d" checked> 1d</label>
                 <label><input type="radio" name="interval" value="3d"> 3d</label>
             </div>
         </div>
@@ -537,7 +538,7 @@
             /** @type {ChartParams} Chart parameters */
             this.params = {
                 symbol: 'BTCUSDT',
-                interval: '1h',
+                interval: '1d',
                 limit: 100,
                 threshold: 0
             };
@@ -654,7 +655,7 @@
             // Initial values
             this.currentValues = {
                 symbol: 'BTCUSDT',
-                interval: '1h',
+                interval: '1d',
                 limit: 100,
                 threshold: 0
             };
@@ -1406,7 +1407,7 @@
             /** @type {ChartParams} Default settings */
             this.defaults = {
                 symbol: 'BTCUSDT',
-                interval: '1h',
+                interval: '1d',
                 limit: 100,
                 threshold: 0
             };
@@ -1446,7 +1447,7 @@
             
             // Add plugins
             renderer.pluginManager.add(new CurrentPricePlugin({
-                showPercentage: true,
+                showPercentage: false,
                 lineColor: '#3498db',
                 lineStyle: 'dashed',
                 showBullet: true
